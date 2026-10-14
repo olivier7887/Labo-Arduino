@@ -4,7 +4,7 @@ Simulateur d’électronique et d’Arduino de l’Institut Saint-Roch (Marche-e
 
 Créé par Olivier Lesenfants, avec l’aide de Claude, l’assistant IA d’Anthropic.
 
-- Application : https://olivier7887.github.io/labo-arduino/
+- Application : https://olivier7887.github.io/Labo-Arduino/
 - Installation : bouton « Installer l’app » (Chromebook, Android, Chrome, Edge) ou, sur iPhone et iPad, Safari → Partager → « Sur l’écran d’accueil ».
 - Fonctionne hors connexion après une première ouverture.
 
