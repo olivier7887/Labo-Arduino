@@ -1,0 +1,19 @@
+{
+  "name": "Labo Arduino – Institut Saint-Roch",
+  "short_name": "Labo Arduino",
+  "description": "Simulateur d’électronique et d’Arduino : câblage, programmation en blocs ou en C, défis vérifiés automatiquement.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e1e5e2",
+  "theme_color": "#00757e",
+  "categories": ["education"],
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
