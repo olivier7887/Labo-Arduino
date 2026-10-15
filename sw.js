@@ -1,5 +1,5 @@
-// Labo Arduino – service worker (version 1.3)
-const CACHE = 'labo-arduino-1.3';
+// Labo Arduino – service worker (version 1.4)
+const CACHE = 'labo-arduino-1.4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));

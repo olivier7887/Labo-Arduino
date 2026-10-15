@@ -519,7 +519,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
     <h3>Raccourcis clavier</h3>
     <p>Espace téléverser ou arrêter · Ctrl+Z annuler · R pivoter · Suppr effacer · Échap annuler le fil · molette zoom.</p>
     <h3>Instructions disponibles en code C</h3>
-    <p style="font-family:var(--font-mono);font-size:12.5px;line-height:1.6">pinMode · digitalWrite · digitalRead · analogRead · analogWrite · delay · millis · tone · noTone · map · constrain · random · Serial.begin · Serial.print · Serial.println · Servo (attach, write) · if / else · for · while · do…while · switch · fonctions · tableaux · #define</p>
+    <p style="font-family:var(--font-mono);font-size:12.5px;line-height:1.6">pinMode · digitalWrite · digitalRead · analogRead · analogWrite · delay · delayMicroseconds · millis · pulseIn · tone · noTone · map · constrain · random · Serial.begin · Serial.print · Serial.println · String · Servo (attach, write) · LiquidCrystal_I2C (init, backlight, clear, setCursor, print) · SPI.begin · MFRC522 (PCD_Init, PICC_IsNewCardPresent, PICC_ReadCardSerial, uid) · if / else · for · while · do…while · switch · fonctions · tableaux · #define</p>
     <h3>À propos</h3>
     <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
       <img id="logoBig" alt="Institut Saint-Roch, Marche-en-Famenne" style="height:84px;width:auto;background:var(--logo-bg);border-radius:8px;padding:6px 8px">
@@ -531,7 +531,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
       <div class="hsum">
         <h3 style="margin-top:4px">Le Labo Arduino en bref</h3>
         <p>Un simulateur d’électronique et d’Arduino pensé pour la classe, utilisable sur Chromebook, PC ou smartphone, même hors ligne. L’élève câble ses composants sur la carte ou sur une breadboard, programme en blocs ou en code C, puis téléverse : les LED s’allument, le servomoteur tourne, le buzzer sonne, et une LED sans résistance grille comme en vrai.</p>
-        <p>Treize défis sur quatre niveaux, vérifiés automatiquement ; le mode prof donne accès aux solutions et à la correction des projets rendus.</p>
+        <p>Vingt et un défis sur six niveaux, des premières LED aux modules (afficheurs, ultrason, RFID), vérifiés automatiquement ; le mode prof donne accès aux solutions et à la correction des projets rendus.</p>
       </div>
       <ul class="hlist" id="histList"></ul>
     </div>
@@ -630,7 +630,7 @@ T('uno', {
 });
 
 T('led', {
-  nom:'LED', w:36, h:66, prefix:'LED',
+  nom:'LED', w:36, h:66, prefix:'LED', burnable:true,
   pins:[{id:'K', x:12, y:62, n:'Cathode (−) : patte courte, côté plat'}, {id:'A', x:24, y:62, n:'Anode (+) : patte longue'}],
   params:{color:'rouge'},
   draw(c){
@@ -811,7 +811,7 @@ T('servo', {
 });
 
 T('rgb', {
-  nom:'LED RVB (cathode commune)', w:48, h:70, prefix:'RVB',
+  nom:'LED RVB (cathode commune)', w:48, h:70, prefix:'RVB', burnable:true,
   pins:[{id:'R', x:6, y:66, n:'Rouge (+)'}, {id:'K', x:18, y:66, n:'Cathode commune (−) : la plus longue'}, {id:'G', x:30, y:66, n:'Vert (+)'}, {id:'B', x:42, y:66, n:'Bleu (+)'}],
   params:{},
   draw(c){
@@ -991,7 +991,7 @@ function solveCircuit(circ, nets, rt, inputs, mem){
   const tonePins = []; rt.pins.forEach((p, i) => { if(p.tone) tonePins.push(i); });
   let V = new Float64Array(N);
   const S = {
-    now, inputs, burned: mem.burned, pins: rt.pins, servos: rt.servo, tonePins, pinNet,
+    now, inputs, rt, burned: mem.burned, pins: rt.pins, servos: rt.servo, tonePins, pinNet,
     mod: mem.mod, dstate: mem.dstate, dres: {},
     netOf: (c, pid) => nets.netOf.get(c.id + ':' + pid),
     node: (c, pid) => nodeOf(nets.netOf.get(c.id + ':' + pid)),
@@ -1059,7 +1059,7 @@ function solveCircuit(circ, nets, rt, inputs, mem){
   for(const c of circ.comps){ const d = TYPES[c.type]; if(d.post) R.comp[c.id] = d.post(c, S); }
   for(const c of circ.comps){
     const st = R.comp[c.id]; if(!st) continue;
-    if((c.type === 'led' || c.type === 'rgb') && !st.burned && st.i > 0.035){ newBurn.push(c); }
+    if(TYPES[c.type].burnable && !st.burned && st.i > 0.035){ newBurn.push(c); }
   }
   // LED intégrée L (broche 13, via un ampli : indépendante du câblage)
   const p13 = rt.pins[13];
@@ -1071,12 +1071,204 @@ function solveCircuit(circ, nets, rt, inputs, mem){
   for(const c of circ.comps){
     const st = R.comp[c.id]; if(!st) continue;
     if(c.type === 'led' && st.rev && !st.burned) R.warn.push({k:'rev' + c.id, t:(c.label || c.id) + ' est alimentée à l’envers : l’anode (+, patte longue) doit aller vers le + et la cathode (−) vers GND.'});
+    if(c.type === 'rfid' && st.over5) R.warn.push({k:'r5' + c.id, t:(c.label || c.id) + ' est alimenté en 5 V : le RC522 fonctionne en 3,3 V, un vrai module risquerait d’être détruit. Relie sa borne 3,3 V au 3,3 V de l’Arduino.'});
     if(c.type === 'buzzer' && st.rev) R.warn.push({k:'rev' + c.id, t:(c.label || c.id) + ' est branché à l’envers (+ et − inversés).'});
   }
   for(const c of circ.comps){ const d = TYPES[c.type]; if(d.module){ const st = R.comp[c.id];
     const wired = d.pins.some(p => nets.connected(c.id + ':' + p.id));
     if(wired && !S.mod[c.id]) R.warn.push({k:'pw' + c.id, t:(c.label || c.id) + ' n’est pas alimenté : relie VCC/+ au 5 V et GND au GND de l’Arduino.'}); } }
   return R;
+}
+
+/* =====================================================================
+   MODULES — afficheur 7 segments, réseau de résistances, écran LCD I2C,
+   capteur à ultrason HC-SR04, lecteur RFID RC522
+   (bornes au pas de 12, comme la breadboard)
+   ===================================================================== */
+const SEGS = ['a','b','c','d','e','f','g'];
+/* bit s = segment SEGS[s] (a = bit 0) */
+const DIGIT_BITS = [0b0111111, 0b0000110, 0b1011011, 0b1001111, 0b1100110, 0b1101101, 0b1111101, 0b0000111, 0b1111111, 0b1101111];
+const BADGES = {
+  bleu:    {nom:'Badge bleu',    uid:[0xDE, 0xAD, 0xBE, 0xEF], col:'#2266d8', ink:'#fff'},
+  blanche: {nom:'Carte blanche', uid:[0x04, 0xA3, 0x1B, 0x92], col:'#f4f4f0', ink:'#333'},
+  rouge:   {nom:'Badge rouge',   uid:[0x7F, 0x2C, 0x90, 0x11], col:'#d62828', ink:'#fff'},
+};
+const uidText = u => u.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+
+/* ---------- afficheur 7 segments (cathode commune, brochage 5161AS) ---------- */
+T('seg7', {
+  nom:'Afficheur 7 segments', w:72, h:104, prefix:'AFF', burnable:true,
+  pins:[
+    {id:'g', x:12, y:16, n:'Segment g (milieu)'}, {id:'f', x:24, y:16, n:'Segment f (haut gauche)'}, {id:'COM1', x:36, y:16, n:'Cathode commune (−, vers GND)'},
+    {id:'a', x:48, y:16, n:'Segment a (haut)'}, {id:'b', x:60, y:16, n:'Segment b (haut droite)'},
+    {id:'e', x:12, y:88, n:'Segment e (bas gauche)'}, {id:'d', x:24, y:88, n:'Segment d (bas)'}, {id:'COM2', x:36, y:88, n:'Cathode commune (−, vers GND)', opt:true},
+    {id:'c', x:48, y:88, n:'Segment c (bas droite)'}, {id:'dp', x:60, y:88, n:'Point décimal (dp)', opt:true},
+  ],
+  bridges:[['COM1','COM2']], params:{},
+  draw(){
+    const seg = {a:'M27 31 H47', b:'M50 34 V48', c:'M50 56 V70', d:'M27 73 H47', e:'M24 56 V70', f:'M24 34 V48', g:'M27 52 H47'};
+    let s = `<rect class="hit" x="0" y="0" width="72" height="104"/>
+      <rect x="2" y="2" width="68" height="100" rx="3" fill="#1d1f22" stroke="#000"/>
+      <rect x="8" y="24" width="56" height="56" rx="2" fill="#141518"/>`;
+    for(const k of SEGS) s += `<path class="sg sg-${k}" d="${seg[k]}" transform="skewX(-6) translate(5 0)" stroke="#3a2626" stroke-width="6" stroke-linecap="round" fill="none"/>`;
+    s += `<circle class="sg-dp" cx="58" cy="73" r="3.2" fill="#3a2626"/>`;
+    [['g',12],['f',24],['−',36],['a',48],['b',60]].forEach(([t, x]) => s += `<text x="${x}" y="9" class="pm" style="fill:#9aa1a8;font-size:6.5px">${t}</text>`);
+    [['e',12],['d',24],['−',36],['c',48],['dp',60]].forEach(([t, x]) => s += `<text x="${x}" y="100" class="pm" style="fill:#9aa1a8;font-size:6.5px">${t}</text>`);
+    s += `<g class="burnt" style="display:none"><rect x="8" y="24" width="56" height="56" rx="2" fill="#2c2c2c"/><path d="M22 38 l10 10 -5 8 10 10" stroke="#ff5a3c" stroke-width="2" fill="none"/></g>`;
+    return s;
+  },
+  paint(g, c, R){
+    const st = R && R.comp[c.id];
+    for(const k of [...SEGS, 'dp']){
+      const b = st && st.seg ? st.seg[k] : 0; const el = g.querySelector('.sg-' + k); if(!el) continue;
+      const col = b > .03 ? `rgb(${Math.round(120 + 135 * b)},${Math.round(30 + 20 * b)},${Math.round(30 + 10 * b)})` : '#3a2626';
+      if(k === 'dp') el.setAttribute('fill', col); else el.setAttribute('stroke', col);
+      el.style.filter = b > .2 ? `drop-shadow(0 0 ${1 + 3 * b}px rgba(255,60,40,.9))` : '';
+    }
+    g.querySelector('.burnt').style.display = st && st.burned ? '' : 'none';
+  },
+  stamp(c, S){ if(S.burned.has(c.id)) return; const k = S.node(c, 'COM1');
+    for(const s of [...SEGS, 'dp']) S.diode(c.id + '.' + s, S.node(c, s), k, 2.0, 8); },
+  post(c, S){
+    if(S.burned.has(c.id)) return {seg:{}, burned:true, i:0};
+    const seg = {}; let imax = 0;
+    for(const s of [...SEGS, 'dp']){ const d = S.dres[c.id + '.' + s]; const i = d ? d.i : 0; imax = Math.max(imax, i); seg[s] = S.brightness(i, c, s, 'COM1'); }
+    return {seg, i:imax};
+  },
+});
+
+/* ---------- réseau de 8 résistances ---------- */
+T('resnet', {
+  nom:'Réseau de 8 résistances', w:108, h:88, prefix:'RN',
+  pins:[...[1,2,3,4,5,6,7,8].map(k => ({id:'i' + k, x:12 * k, y:8, n:'Résistance ' + k + ' — borne du haut'})),
+        ...[1,2,3,4,5,6,7,8].map(k => ({id:'o' + k, x:12 * k, y:80, n:'Résistance ' + k + ' — borne du bas'}))],
+  params:{r:220},
+  draw(c){
+    const [a, b, m] = rBands(c.p.r);
+    let s = `<rect class="hit" x="0" y="0" width="108" height="88"/><rect x="4" y="16" width="100" height="56" rx="4" fill="#ece6d6" stroke="#b9ad8c"/>`;
+    for(let k = 1; k <= 8; k++){ const x = 12 * k;
+      s += `<path d="M${x} 8 V24 M${x} 64 V80" stroke="#9aa1a8" stroke-width="2"/>
+        <rect x="${x - 4}" y="24" width="8" height="40" rx="3" fill="#e6c79c" stroke="#a8875b" stroke-width=".8"/>
+        <rect x="${x - 4}" y="30" width="8" height="3" fill="${BANDC[a]}"/><rect x="${x - 4}" y="36" width="8" height="3" fill="${BANDC[b]}"/><rect x="${x - 4}" y="42" width="8" height="3" fill="${BANDC[m]}"/><rect x="${x - 4}" y="54" width="8" height="2.5" fill="#c9a43a"/>
+        <text x="${x}" y="4" class="pm" style="font-size:6px">${k}</text>`; }
+    return s;
+  },
+  stamp(c, S){ for(let k = 1; k <= 8; k++) S.R(S.node(c, 'i' + k), S.node(c, 'o' + k), c.p.r, true); },
+});
+
+/* ---------- écran LCD 16×2 avec module I2C ---------- */
+T('lcd', {
+  nom:'Écran LCD 16×2 I2C', w:252, h:96, prefix:'LCD', module:true,
+  pins:[{id:'GND', x:6, y:30, n:'GND'}, {id:'VCC', x:6, y:42, n:'VCC (5 V)'}, {id:'SDA', x:6, y:54, n:'SDA (données I2C, vers A4)'}, {id:'SCL', x:6, y:66, n:'SCL (horloge I2C, vers A5)'}],
+  params:{addr:0x27},
+  draw(c){
+    let s = `<rect class="hit" x="0" y="0" width="252" height="96"/>
+      <rect x="10" y="2" width="240" height="92" rx="4" fill="#2a6b3a" stroke="#174524"/>
+      <circle cx="18" cy="10" r="3.5" fill="#d8dcd8"/><circle cx="242" cy="10" r="3.5" fill="#d8dcd8"/><circle cx="18" cy="86" r="3.5" fill="#d8dcd8"/><circle cx="242" cy="86" r="3.5" fill="#d8dcd8"/>
+      <path d="M6 30 H14 M6 42 H14 M6 54 H14 M6 66 H14" stroke="#9aa1a8" stroke-width="2.2"/>
+      <text x="16" y="33" class="pm" style="fill:#e3f2e6;font-size:6px;text-anchor:start">GND</text><text x="16" y="45" class="pm" style="fill:#e3f2e6;font-size:6px;text-anchor:start">VCC</text>
+      <text x="16" y="57" class="pm" style="fill:#e3f2e6;font-size:6px;text-anchor:start">SDA</text><text x="16" y="69" class="pm" style="fill:#e3f2e6;font-size:6px;text-anchor:start">SCL</text>
+      <rect x="34" y="14" width="208" height="68" rx="3" fill="#202a22"/>
+      <rect class="scr" x="40" y="20" width="196" height="56" rx="2" fill="#3d4a3a"/>
+      <text x="236" y="91" class="pm" style="fill:#cfe3d3;font-size:6px;text-anchor:end">I2C 0x${c.p.addr.toString(16).toUpperCase()}</text>`;
+    for(let r = 0; r < 2; r++) for(let k = 0; k < 16; k++){
+      const x = 44 + k * 12, y = 26 + r * 25;
+      s += `<rect class="cell" data-r="${r}" data-k="${k}" x="${x}" y="${y}" width="10.5" height="19" rx=".8" fill="transparent"/>
+        <text class="ch" data-r="${r}" data-k="${k}" x="${x + 5.25}" y="${y + 15}" style="font-family:var(--font-mono),monospace;font-size:14px;font-weight:500;text-anchor:middle;pointer-events:none"></text>`; }
+    return s;
+  },
+  paint(g, c, R){
+    const st = R && R.comp[c.id];
+    const on = !!(st && st.powered), bl = on && st.bl !== false;
+    g.querySelector('.scr').setAttribute('fill', !on ? '#3d4a3a' : bl ? '#7fd9e8' : '#2f5560');
+    const txt = on ? st.rows : null;
+    g.querySelectorAll('.ch').forEach(t => { const ch = txt ? (txt[+t.dataset.r] || '')[+t.dataset.k] || ' ' : ' '; t.textContent = ch === ' ' ? '' : ch; t.setAttribute('fill', bl ? '#0b2a4a' : '#9fc6d0'); });
+    g.querySelectorAll('.cell').forEach(r => { const full = on && st.blocks && +r.dataset.r === 0; r.setAttribute('fill', full ? (bl ? '#3c6f9a' : '#22404a') : (on ? (bl ? 'rgba(20,80,140,.07)' : 'rgba(0,0,0,.1)') : 'transparent')); });
+  },
+  stamp(c, S){ const v = S.node(c, 'VCC'), gnd = S.node(c, 'GND'); S.R(v, gnd, 250, true);
+    if(S.mod[c.id]){ S.R(v, S.node(c, 'SDA'), 4700, true); S.R(v, S.node(c, 'SCL'), 4700, true); } },
+  powered(c, S){ return S.v(c, 'VCC') - S.v(c, 'GND') > 4; },
+  post(c, S){
+    const powered = !!S.mod[c.id];
+    const wired = S.netOf(c, 'SDA') === S.pinNet(18) && S.netOf(c, 'SCL') === S.pinNet(19);
+    const L = S.rt.lcds && S.rt.lcds[c.p.addr];
+    const ok = powered && wired && L && L.inited;
+    return {powered, wired, addrOk: !!L, rows: ok && L.disp ? L.rows.map(r => r.slice(0, 16)) : ['', ''], bl: ok ? L.bl : true, blocks: powered && !ok};
+  },
+});
+
+/* ---------- capteur à ultrason HC-SR04 ---------- */
+T('sr04', {
+  nom:'Capteur à ultrason HC-SR04', w:108, h:72, prefix:'US', module:true,
+  pins:[{id:'VCC', x:36, y:68, n:'VCC (5 V)'}, {id:'TRIG', x:48, y:68, n:'Trig (déclenchement, sortie de l’Arduino)'}, {id:'ECHO', x:60, y:68, n:'Echo (retour, entrée de l’Arduino)'}, {id:'GND', x:72, y:68, n:'GND'}],
+  params:{cm:50},
+  draw(){
+    let s = `<rect class="hit" x="0" y="0" width="108" height="72"/>
+      <rect x="2" y="12" width="104" height="44" rx="3" fill="#2269b8" stroke="#164a85"/>
+      <path d="M36 56 V68 M48 56 V68 M60 56 V68 M72 56 V68" stroke="#9aa1a8" stroke-width="2.2"/>`;
+    for(const x of [24, 84]) s += `<circle cx="${x}" cy="30" r="18" fill="#c9ccd0" stroke="#7d848c" stroke-width="1.5"/><circle cx="${x}" cy="30" r="13" fill="#2c3036"/><circle cx="${x}" cy="30" r="9" fill="none" stroke="#5a6068" stroke-dasharray="1.5 1.5"/>`;
+    s += `<rect x="45" y="16" width="18" height="8" rx="1" fill="#d8d8d8"/><text x="54" y="22" class="pm" style="font-size:5px">HC-SR04</text>
+      <text x="36" y="52" class="pm" style="fill:#e8f0ff;font-size:5.5px">Vcc</text><text x="48" y="52" class="pm" style="fill:#e8f0ff;font-size:5.5px">Trig</text><text x="60" y="52" class="pm" style="fill:#e8f0ff;font-size:5.5px">Echo</text><text x="72" y="52" class="pm" style="fill:#e8f0ff;font-size:5.5px">Gnd</text>
+      <g class="waves" style="display:none" stroke="#2269b8" stroke-width="1.6" fill="none"><path d="M14 6 q10 -6 20 0"/><path d="M74 6 q10 -6 20 0"/></g>
+      <text class="val" x="54" y="10" style="font-family:var(--font-mono),monospace;font-size:8px;fill:#4d565e;text-anchor:middle"></text>`;
+    return s;
+  },
+  paint(g, c, R){ g.querySelector('.val').textContent = '↔ ' + Math.round(c.p.cm) + ' cm';
+    const st = R && R.comp[c.id]; g.querySelector('.waves').style.display = st && st.ping ? '' : 'none'; },
+  stamp(c, S){ const v = S.node(c, 'VCC'), gnd = S.node(c, 'GND'); S.R(v, gnd, 330, true); S.R(S.node(c, 'TRIG'), gnd, 50000, true);
+    if(S.mod[c.id]) S.src(S.node(c, 'ECHO'), 0, 200, gnd); },
+  powered(c, S){ return S.v(c, 'VCC') - S.v(c, 'GND') > 4; },
+  post(c, S){ return {powered: !!S.mod[c.id], ping: (S.rt.ping && S.rt.ping[c.id] || 0) > S.now - 150}; },
+});
+
+/* ---------- lecteur RFID RC522 (+ badge) ---------- */
+T('rfid', {
+  nom:'Lecteur RFID RC522', w:176, h:100, prefix:'RFID', module:true,
+  pins:[
+    {id:'SDA', x:18, y:96, n:'SDA / SS (sélection, broche 10 en général)'}, {id:'SCK', x:30, y:96, n:'SCK (horloge SPI, broche 13)'},
+    {id:'MOSI', x:42, y:96, n:'MOSI (broche 11)'}, {id:'MISO', x:54, y:96, n:'MISO (broche 12)'}, {id:'IRQ', x:66, y:96, n:'IRQ (non utilisée)', opt:true},
+    {id:'GND', x:78, y:96, n:'GND'}, {id:'RST', x:90, y:96, n:'RST (remise à zéro, broche 9 en général)'}, {id:'V33', x:102, y:96, n:'3,3 V (alimentation : surtout pas 5 V)'},
+  ],
+  params:{badge:'bleu'},
+  draw(c){
+    const B = BADGES[c.p.badge] || BADGES.bleu;
+    let s = `<rect class="hit" x="0" y="0" width="176" height="100"/>
+      <rect x="4" y="2" width="114" height="84" rx="3" fill="#1f5fa8" stroke="#123e72"/>
+      <rect x="12" y="10" width="76" height="62" rx="6" fill="none" stroke="#cfd9e6" stroke-width="2.4"/>
+      <rect x="18" y="16" width="64" height="50" rx="4" fill="none" stroke="#cfd9e6" stroke-width="1.6"/>
+      <rect x="92" y="30" width="20" height="20" rx="1" fill="#1b1d20"/><text x="102" y="42" class="pm" style="fill:#aab;font-size:4.5px">RC522</text>
+      <path d="${[18,30,42,54,66,78,90,102].map(x => `M${x} 86 V96`).join(' ')}" stroke="#9aa1a8" stroke-width="2.2"/>`;
+    ['SDA','SCK','MOSI','MISO','IRQ','GND','RST','3.3V'].forEach((t, k) => s += `<text x="${18 + 12 * k}" y="${82}" class="pm" style="fill:#e8f0ff;font-size:4.6px">${t}</text>`);
+    s += `<g class="badge act" style="cursor:pointer"><g class="bmove">
+        <rect x="128" y="18" width="44" height="58" rx="6" fill="${B.col}" stroke="#00000055"/>
+        <circle cx="150" cy="30" r="4" fill="none" stroke="${B.ink}" stroke-width="1.4" opacity=".7"/>
+        <text x="150" y="52" class="pm" style="fill:${B.ink};font-size:6px">${B.nom.split(' ')[0]}</text>
+        <text x="150" y="61" class="pm" style="fill:${B.ink};font-size:6px">${B.nom.split(' ')[1]}</text></g></g>
+      <g class="waves" style="display:none" stroke="#2b7a37" stroke-width="1.8" fill="none"><path d="M60 -2 q8 -6 16 0"/><path d="M56 -6 q12 -9 24 0"/></g>`;
+    return s;
+  },
+  paint(g, c, R){
+    const st = R && R.comp[c.id]; const on = !!(st && st.present);
+    g.querySelector('.bmove').setAttribute('transform', on ? 'translate(-102 -2)' : '');
+    g.querySelector('.waves').style.display = st && st.beep ? '' : 'none';
+  },
+  stamp(c, S){ const v = S.node(c, 'V33'), gnd = S.node(c, 'GND'); S.R(v, gnd, 200, true);
+    if(S.mod[c.id]) S.src(S.node(c, 'MISO'), 0, 300, gnd); },
+  powered(c, S){ return S.v(c, 'V33') - S.v(c, 'GND') > 3; },
+  post(c, S){
+    const card = S.inputs.rfid && S.inputs.rfid[c.id];
+    return {powered: !!S.mod[c.id], over5: S.v(c, 'V33') - S.v(c, 'GND') > 4.2, present: !!(card && card.until > S.now), beep: !!(card && card.readAt && card.readAt > S.now - 300)};
+  },
+});
+
+for(const t in TYPES){ TYPES[t].pinMap = Object.fromEntries(TYPES[t].pins.map(p => [p.id, p])); }
+
+/* lecture d'un chiffre sur un afficheur (pour les défis) */
+function seg7Digit(st){
+  if(!st || !st.seg) return null;
+  let bits = 0; SEGS.forEach((s, k) => { if(st.seg[s] > .3) bits |= 1 << k; });
+  if(!bits) return -1;
+  const d = DIGIT_BITS.indexOf(bits); return d >= 0 ? d : '?' + bits;
 }
 
 /* =====================================================================
@@ -1152,7 +1344,7 @@ function addTicks(s){
   return s;
 }
 
-const API_NAMES = ['pinMode','digitalWrite','digitalRead','analogRead','analogWrite','delay','delayMicroseconds','millis','micros','tone','noTone','map','constrain','random','randomSeed','abs','min','max','pow','sqrt','sq','sin','cos','tan','floor','ceil','round','Serial','Servo','HIGH','LOW','INPUT','OUTPUT','INPUT_PULLUP','LED_BUILTIN','A0','A1','A2','A3','A4','A5','PI','HALF_PI','TWO_PI','DEC','HEX','BIN','OCT','__tick','__i','bitRead','bitWrite','lowByte','highByte','isnan'];
+const API_NAMES = ['pinMode','digitalWrite','digitalRead','analogRead','analogWrite','delay','delayMicroseconds','millis','micros','tone','noTone','map','constrain','random','randomSeed','abs','min','max','pow','sqrt','sq','sin','cos','tan','floor','ceil','round','Serial','Servo','HIGH','LOW','INPUT','OUTPUT','INPUT_PULLUP','LED_BUILTIN','A0','A1','A2','A3','A4','A5','PI','HALF_PI','TWO_PI','DEC','HEX','BIN','OCT','__tick','__i','bitRead','bitWrite','lowByte','highByte','isnan','pulseIn','String','SPI','Wire','LiquidCrystal_I2C','MFRC522'];
 
 function transpile(src){
   if(!/\bvoid\s+setup\s*\(/.test(src)) throw new CompileError('Il manque la fonction « void setup() { … } ». Elle est obligatoire, même vide.', 1);
@@ -1170,7 +1362,7 @@ function transpile(src){
   while((m = intDecl.exec(s))){ if(INTTYPES.test(m[1].replace(/\s+/g, ' ').trim())) intVars.add(m[2]); }
   // déclarations multiples « int a = 1, b = 2; »
   const multi = new RegExp('\\b(' + TYPEV + ')\\s+([^;(){}]*);', 'g');
-  while((m = multi.exec(s))){ if(INTTYPES.test(m[1].replace(/\s+/g, ' ').trim())) m[2].split(',').forEach(part => { const mm = part.trim().match(/^([A-Za-z_]\w*)/); if(mm) intVars.add(mm[1]); }); }
+  while((m = multi.exec(s))){ if(INTTYPES.test(m[1].replace(/\s+/g, ' ').trim())) (function(str){ const out = []; let d = 0, cur = ''; for(const ch of str){ if('([{'.includes(ch)) d++; else if(')]}'.includes(ch)) d--; if(ch === ',' && !d){ out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; })(m[2]).forEach(part => { const mm = part.trim().match(/^([A-Za-z_]\w*)/); if(mm) intVars.add(mm[1]); }); }
   // fonctions
   const fnRe = new RegExp('\\b(?:static\\s+|inline\\s+)*' + TYPEW + '\\s+([A-Za-z_]\\w*)\\s*\\(([^()]*)\\)\\s*\\{', 'g');
   s = s.replace(fnRe, (all, name, params) => {
@@ -1182,6 +1374,12 @@ function transpile(src){
   s = s.replace(protoRe, mm => mm.replace(/[^\n]/g, ' '));
   // Servo
   s = s.replace(/\bServo\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*;/g, (all, names) => { const ns = names.split(',').map(x => x.trim()); ns.forEach(x => declared.add(x)); return 'let ' + ns.map(x => x + ' = new Servo()').join(', ') + ';'; });
+  // objets des bibliothèques : « LiquidCrystal_I2C lcd(0x27, 16, 2); », « MFRC522 rfid(10, 9); »
+  s = s.replace(/\b(LiquidCrystal_I2C|MFRC522)\s+([A-Za-z_]\w*)\s*\(([^()]*)\)\s*;/g, (all, cls, n, args) => { declared.add(n); return 'let ' + n + ' = new ' + cls + '(' + args + ');'; });
+  s = s.replace(/\b(LiquidCrystal_I2C|MFRC522)\s+([A-Za-z_]\w*)\s*;/g, (all, cls, n) => { declared.add(n); return 'let ' + n + ' = new ' + cls + '();'; });
+  // chaînes : « s.toUpperCase(); » modifie s en C++ ; « s.length() » est une méthode
+  s = s.replace(/([A-Za-z_]\w*)\.(toUpperCase|toLowerCase|trim)\(\)\s*;/g, '$1 = $1.$2();');
+  s = s.replace(/\.length\(\)/g, '.length');
   // tableaux
   s = s.replace(new RegExp('\\b(?:const\\s+|static\\s+)*' + TYPEV + '\\s+([A-Za-z_]\\w*)\\s*\\[[^\\]]*\\]\\s*=\\s*\\{([^}]*)\\}', 'g'), (all, n, list) => { declared.add(n); return 'let ' + n + ' = [' + list + ']'; });
   s = s.replace(new RegExp('\\b(?:const\\s+|static\\s+)*' + TYPEV + '\\s+([A-Za-z_]\\w*)\\s*\\[[^\\]]*\\]\\s*=\\s*(\\u0001\\d+\\u0002)', 'g'), (all, n, lit) => { declared.add(n); return 'let ' + n + ' = ' + lit; });
@@ -1191,7 +1389,13 @@ function transpile(src){
   s = s.replace(/\(\s*(?:int|long|unsigned\s+long|unsigned\s+int|byte|float|double)\s*\)\s*/g, '');
   // déclarations simples
   s = s.replace(new RegExp('\\b(?:const\\s+|static\\s+|volatile\\s+)*' + TYPEV + '\\s+(?=[A-Za-z_])', 'g'), 'let ');
-  s.replace(/\blet\s+([^;]*)/g, (all, list) => { list.split(',').forEach(p => { const mm = p.trim().match(/^([A-Za-z_]\w*)/); if(mm) declared.add(mm[1]); }); return all; });
+  const topSplit = str => { const out = []; let d = 0, cur = ''; for(const ch of str){ if('([{'.includes(ch)) d++; else if(')]}'.includes(ch)) d--; if(ch === ',' && !d){ out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; };
+  s.replace(/\blet\s+([^;]*)/g, (all, list) => { topSplit(list).forEach(p => { const mm = p.trim().match(/^([A-Za-z_]\w*)/); if(mm) declared.add(mm[1]); }); return all; });
+  // division entière entre deux entiers simples : « millis() / 1000 », « n / 2 », « total / compte »
+  { const iv = [...intVars].join('|') || '__aucune__';
+    const L = '(?<![\\w.)\\]])(?<![*/%]\\s*)(millis\\(\\)|micros\\(\\)|(?:' + iv + ')(?![\\w.(\\[])|\\d+(?![\\w.]))';
+    const Rr = '((?:' + iv + ')(?![\\w.(\\[])|\\d+(?![\\w.]))';
+    s = s.replace(new RegExp(L + '\\s*\\/\\s*' + Rr, 'g'), '__i($1 / $2)'); }
   // division entière : on tronque les affectations aux variables entières
   if(intVars.size){
     const re = new RegExp('(?<![\\w.$])(' + [...intVars].join('|') + ')\\s*(\\+=|-=|\\*=|/=|%=|=)(?!=)', 'g');
@@ -1289,7 +1493,7 @@ function makeRuntime(hooks){
     pinMode(p, m){ p = chk(p, 'pinMode'); if(![0,1,2].includes(Number(m))) throw new Error('Mode inconnu dans pinMode() : utilise OUTPUT, INPUT ou INPUT_PULLUP.'); rt.pins[p].mode = Number(m); if(m !== 1){ rt.pins[p].pwm = null; rt.pins[p].tone = null; } hooks.dirty(); },
     digitalWrite(p, v){ p = chk(p, 'digitalWrite'); const P = rt.pins[p]; v = v ? 1 : 0;
       if(P.mode !== 1){ P.mode = v ? 2 : 0; if(v) hooks.warn('pm' + p, 'digitalWrite(' + pinName(p).replace('D','') + ', HIGH) sur une broche qui n’est pas en sortie : il manque pinMode(' + (p >= 14 ? pinName(p) : p) + ', OUTPUT) dans setup(). La LED reste très faible.'); }
-      P.val = v; P.pwm = null; hooks.dirty(); },
+      P.val = v; P.pwm = null; if(v) P.lastHigh = performance.now(); hooks.dirty(); },
     digitalRead(p){ p = chk(p, 'digitalRead'); return hooks.readDigital(p); },
     analogRead(p){ let n = Number(p); if(Number.isInteger(n) && n >= 0 && n <= 5) n += 14; if(!(n >= 14 && n <= 19)) throw new Error('analogRead() fonctionne seulement avec A0 à A5.'); return hooks.readAnalog(n); },
     analogWrite(p, v){ p = chk(p, 'analogWrite'); v = Math.max(0, Math.min(255, Math.trunc(Number(v) || 0))); const P = rt.pins[p]; P.mode = 1; P.tone = null;
@@ -1316,6 +1520,46 @@ function makeRuntime(hooks){
       print(x, f){ hooks.serial(fmtSerial(x, f)); }, println(x, f){ hooks.serial((x === undefined ? '' : fmtSerial(x, f)) + '\n'); },
       write(x){ hooks.serial(typeof x === 'number' ? String.fromCharCode(x) : String(x)); },
       available(){ return 0; }, read(){ return -1; }, flush(){},
+    },
+    pulseIn(p, level, timeout){ p = chk(p, 'pulseIn'); return hooks.pulseIn(p, level === undefined ? 1 : (level ? 1 : 0)); },
+    String(v, f){
+      if(v === undefined) return '';
+      if(typeof v === 'number'){
+        if(f !== undefined && Number.isInteger(v) && [2, 8, 16].includes(f)) return (v >>> 0).toString(f);
+        if(f !== undefined && !Number.isInteger(v)) return v.toFixed(f);
+        if(f !== undefined && f === 10) return String(v);
+        return Number.isInteger(v) ? String(v) : v.toFixed(2);
+      }
+      if(typeof v === 'boolean') return v ? '1' : '0';
+      return String(v);
+    },
+    SPI:{ begin(){ rt.spiBegun = true; }, end(){}, beginTransaction(){}, endTransaction(){}, transfer(){ return 0; } },
+    Wire:{ begin(){ rt.wireBegun = true; }, beginTransmission(){}, endTransmission(){ return 0; }, write(){}, requestFrom(){ return 0; }, available(){ return 0; }, read(){ return 0; } },
+    LiquidCrystal_I2C: class {
+      constructor(addr, cols, rows){ this.a = Number(addr); this.L = {addr:this.a, inited:false, bl:false, disp:true, rows:['', ''].map(() => ' '.repeat(40)), c:0, r:0};
+        rt.lcds = rt.lcds || {}; rt.lcds[this.a] = this.L; }
+      init(){ this.L.inited = true; this.clear(); hooks.dirty(); hooks.lcdCheck(this.a); }
+      begin(){ this.init(); }
+      backlight(){ this.L.bl = true; hooks.dirty(); } noBacklight(){ this.L.bl = false; hooks.dirty(); } setBacklight(v){ this.L.bl = !!v; hooks.dirty(); }
+      display(){ this.L.disp = true; hooks.dirty(); } noDisplay(){ this.L.disp = false; hooks.dirty(); }
+      clear(){ this.L.rows = ['', ''].map(() => ' '.repeat(40)); this.L.c = 0; this.L.r = 0; hooks.dirty(); }
+      home(){ this.L.c = 0; this.L.r = 0; }
+      setCursor(c, r){ this.L.c = Math.max(0, Math.min(39, Math.trunc(c) || 0)); this.L.r = Math.max(0, Math.min(1, Math.trunc(r) || 0)); }
+      cursor(){} noCursor(){} blink(){} noBlink(){} scrollDisplayLeft(){} scrollDisplayRight(){} autoscroll(){} noAutoscroll(){} createChar(){}
+      print(x, f){ if(!this.L.inited) hooks.warn('lcdinit', 'lcd.print() avant lcd.init() : l’écran n’est pas initialisé, rien ne s’affiche. Ajoute lcd.init(); et lcd.backlight(); dans setup().');
+        const t = fmtSerial(x, f); const row = this.L.rows[this.L.r].split('');
+        for(const ch of t){ if(this.L.c < 40){ row[this.L.c] = ch; } this.L.c++; }
+        this.L.rows[this.L.r] = row.join('').slice(0, 40); hooks.dirty(); return t.length; }
+      write(x){ return this.print(typeof x === 'number' ? String.fromCharCode(x) : x); }
+    },
+    MFRC522: class {
+      constructor(ss, rst){ this.ss = ss === undefined ? 10 : Number(ss); this.rst = rst === undefined ? 9 : Number(rst); this.comp = null; this.uid = {size:0, uidByte:[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], sak:0}; }
+      PCD_Init(){ if(!rt.spiBegun) hooks.warn('spi', 'rfid.PCD_Init() sans SPI.begin() : le lecteur RFID ne peut pas communiquer. Ajoute SPI.begin(); avant rfid.PCD_Init(); dans setup().');
+        this.comp = rt.spiBegun ? hooks.rfidCheck(this.ss, this.rst) : null; }
+      PCD_DumpVersionToSerial(){ hooks.serial(this.comp ? 'Firmware Version: 0x92 = v2.0\n' : 'Firmware Version: 0x0 = (unknown)\nWARNING: Communication failure, is the MFRC522 properly connected?\n'); }
+      PICC_IsNewCardPresent(){ return !!(this.comp && hooks.rfidPresent(this.comp)); }
+      PICC_ReadCardSerial(){ const u = this.comp ? hooks.rfidRead(this.comp) : null; if(!u) return false; this.uid.size = u.length; u.forEach((b, i) => this.uid.uidByte[i] = b); this.uid.sak = 0x08; return true; }
+      PICC_HaltA(){ return 0; } PCD_StopCrypto1(){} PCD_AntennaOn(){} PCD_AntennaOff(){} PCD_SetAntennaGain(){} PICC_GetType(){ return 4; } PICC_GetTypeName(){ return 'MIFARE 1KB'; }
     },
     Servo: class { constructor(){ this.pin = null; this.a = 90; }
       attach(p){ p = chk(p, 'attach'); this.pin = p; rt.servoAttached[p] = true; rt.pins[p].mode = 1; hooks.dirty(); }
@@ -1368,11 +1612,62 @@ const CATS = [
   {id:'snd',   nom:'Sons',      col:'#a8376f'},
   {id:'mot',   nom:'Servo',     col:'#6a4fb6'},
   {id:'ser',   nom:'Moniteur',  col:'#2d5fb3'},
+  {id:'aff',   nom:'Afficheurs', col:'#2f6f8f'},
+  {id:'mod',   nom:'Modules',   col:'#7a5230'},
 ];
 const PIN_OPTS = [...Array(14).keys()].map(i => [String(i), String(i)]).concat([0,1,2,3,4,5].map(i => ['A' + i, 'A' + i]));
 const PWM_OPTS = PWM_PINS.map(p => ['~' + p, String(p)]);
+const SEGPIN_OPTS = [2,3,4,5,6,7].map(p => [String(p), String(p)]);
 const APIN_OPTS = [0,1,2,3,4,5].map(i => ['A' + i, 'A' + i]);
 const HL_OPTS = [['HAUT', 'HIGH'], ['BAS', 'LOW']];
+
+
+const H_SEG7 = `const byte CHIFFRES[10] = {0b0111111, 0b0000110, 0b1011011, 0b1001111, 0b1100110, 0b1101101, 0b1111101, 0b0000111, 0b1111111, 0b1101111};
+
+// affiche n (0 à 9) ; segments a à g sur 7 broches qui se suivent ; n = -1 éteint
+void afficher7seg(int premiere, int n) {
+  for (int s = 0; s < 7; s++) {
+    pinMode(premiere + s, OUTPUT);
+    if (n >= 0 && n <= 9) {
+      digitalWrite(premiere + s, bitRead(CHIFFRES[n], s));
+    } else {
+      digitalWrite(premiere + s, LOW);
+    }
+  }
+}`;
+const H_DIST = `// distance en cm mesurée par le capteur à ultrason HC-SR04
+int mesurerDistance(int trig, int echo) {
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  long duree = pulseIn(echo, HIGH);
+  int cm = duree / 58;
+  return cm;
+}`;
+const H_RFID = `MFRC522 rfid(10, 9);
+
+// vrai quand un nouveau badge vient d'être lu
+bool badgeLu() {
+  return rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial();
+}
+
+// code du badge lu, par exemple "DE AD BE EF"
+String codeBadge() {
+  const char HEXA[] = "0123456789ABCDEF";
+  String code = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    if (i > 0) code += " ";
+    code += HEXA[rfid.uid.uidByte[i] >> 4];
+    code += HEXA[rfid.uid.uidByte[i] & 15];
+  }
+  return code;
+}`;
+const needLCD = G => { G.need('#include <Wire.h>', 'inc'); G.need('#include <LiquidCrystal_I2C.h>', 'inc'); G.need('LiquidCrystal_I2C lcd(0x27, 16, 2);', 'glob'); G.need('lcd.init();', 'setup'); G.need('lcd.backlight();', 'setup'); };
+const needRFID = G => { G.need('#include <SPI.h>', 'inc'); G.need('#include <MFRC522.h>', 'inc'); G.need(H_RFID, 'glob'); G.need('SPI.begin();', 'setup'); G.need('rfid.PCD_Init();', 'setup'); };
 
 const BK = {
   pinmode:{cat:'pins', kind:'stmt', parts:['broche', {f:'pin', t:'pin', def:'13'}, 'en', {f:'mode', t:'dd', def:'OUTPUT', opts:[['SORTIE','OUTPUT'], ['ENTRÉE','INPUT'], ['ENTRÉE PULL-UP','INPUT_PULLUP']]}],
@@ -1435,6 +1730,21 @@ const BK = {
 
   servo:{cat:'mot', kind:'stmt', parts:['servo sur la broche', {f:'pin', t:'pin', def:'9'}, 'à l’angle', {i:'a', t:'num', def:'90'}, '°'],
     gen:(b, G) => { const o = 'servo' + b.f.pin; G.need('#include <Servo.h>', 'inc'); G.need(`Servo ${o};`, 'glob'); G.need(`${o}.attach(${b.f.pin});`, 'setup'); return `${o}.write(${G.x(b, 'a')});`; }},
+
+  streq:{cat:'ops', kind:'bool', parts:[{i:'a', t:'any', def:''}, 'est égal à', {i:'b', t:'any', def:'DE AD BE EF'}], gen:(b, G) => `(${G.x(b, 'a')} == ${G.x(b, 'b')})`},
+
+  seg7:{cat:'aff', kind:'stmt', parts:['7 segments (a sur la broche', {f:'pin', t:'segpin', def:'2'}, ') : afficher', {i:'n', t:'num', def:'0'}],
+    gen:(b, G) => { G.need(H_SEG7, 'glob'); return `afficher7seg(${b.f.pin}, ${G.x(b, 'n')});`; }},
+  seg7off:{cat:'aff', kind:'stmt', parts:['7 segments (a sur la broche', {f:'pin', t:'segpin', def:'2'}, ') : éteindre'],
+    gen:(b, G) => { G.need(H_SEG7, 'glob'); return `afficher7seg(${b.f.pin}, -1);`; }},
+  lcdclear:{cat:'aff', kind:'stmt', parts:['écran LCD : effacer'], gen:(b, G) => { needLCD(G); return 'lcd.clear();'; }},
+  lcdpos:{cat:'aff', kind:'stmt', parts:['écran LCD : curseur colonne', {i:'c', t:'num', def:'0'}, 'ligne', {i:'r', t:'num', def:'0'}], gen:(b, G) => { needLCD(G); return `lcd.setCursor(${G.x(b, 'c')}, ${G.x(b, 'r')});`; }},
+  lcdprint:{cat:'aff', kind:'stmt', parts:['écran LCD : écrire', {i:'v', t:'any', def:'Bonjour'}], gen:(b, G) => { needLCD(G); return `lcd.print(${G.x(b, 'v')});`; }},
+
+  dist:{cat:'mod', kind:'num', parts:['distance en cm (Trig', {f:'trig', t:'pin', def:'9'}, 'Echo', {f:'echo', t:'pin', def:'10'}, ')'],
+    gen:(b, G) => { G.need(H_DIST, 'glob'); return `mesurerDistance(${b.f.trig}, ${b.f.echo})`; }},
+  badge:{cat:'mod', kind:'bool', parts:['un badge RFID est présenté'], gen:(b, G) => { needRFID(G); return 'badgeLu()'; }},
+  badgecode:{cat:'mod', kind:'any', parts:['code du badge'], gen:(b, G) => { needRFID(G); return 'codeBadge()'; }},
 
   print:{cat:'ser', kind:'stmt', parts:['afficher', {i:'v', t:'any', def:'Bonjour'}, {f:'nl', t:'dd', def:'ln', opts:[['puis aller à la ligne','ln'], ['sans aller à la ligne','']]}],
     gen:(b, G) => { G.need('Serial.begin(9600);', 'setup', true); return `Serial.print${b.f.nl}(${G.x(b, 'v')});`; }},
@@ -1508,7 +1818,7 @@ function genCode(prog){
   let out = '';
   if(needs.inc.length) out += needs.inc.join('\n') + '\n\n';
   const decl = prog.vars.map(v => `${v.t === 'float' ? 'float' : 'int'} ${v.n} = 0;`);
-  if(decl.length || needs.glob.length) out += [...decl, ...needs.glob].join('\n') + '\n\n';
+  if(decl.length || needs.glob.length) out += [decl.join('\n'), ...needs.glob].filter(Boolean).join('\n\n') + '\n\n';
   const pre = [...needs.setupFirst, ...needs.setup].map(l => '  ' + l + '\n').join('');
   out += 'void setup() {\n' + pre + setupBody + '}\n\nvoid loop() {\n' + loopBody + '}\n';
   return {code: out, bad};
@@ -1527,7 +1837,7 @@ function blockHTML(prog, id, pal){
     if(p.f){
       const v = b.f[p.f];
       if(p.t === 'text'){ row += `<input class="ftxt" data-f="${id}.${p.f}" value="${escH(v)}" size="${Math.max(3, String(v).length)}" ${pal ? 'tabindex="-1"' : ''} aria-label="texte">`; return; }
-      let opts = p.t === 'pin' ? PIN_OPTS.concat(prog.vars.map(x => ['variable ' + x.n, x.n])) : p.t === 'pwm' ? PWM_OPTS : p.t === 'apin' ? APIN_OPTS : p.t === 'var' ? prog.vars.map(x => [x.n, x.n]) : p.opts;
+      let opts = p.t === 'segpin' ? SEGPIN_OPTS : p.t === 'pin' ? PIN_OPTS.concat(prog.vars.map(x => ['variable ' + x.n, x.n])) : p.t === 'pwm' ? PWM_OPTS : p.t === 'apin' ? APIN_OPTS : p.t === 'var' ? prog.vars.map(x => [x.n, x.n]) : p.opts;
       if(p.t === 'var' && !opts.length) opts = [['(crée une variable)', '']];
       row += `<select class="fsel" data-f="${id}.${p.f}" ${pal ? 'tabindex="-1"' : ''} aria-label="${escH(p.t === 'var' ? 'variable' : 'choix')}">` + opts.map(([l, val]) => `<option value="${escH(val)}"${String(val) === String(v) ? ' selected' : ''}>${escH(l)}</option>`).join('') + '</select>';
       return;
@@ -1714,10 +2024,19 @@ function Board(svg, api){
     if(ends.some(k => /:(VCC|VS|V)$/.test(k))) return '#d62828';
     return AUTO_CYCLE[i % AUTO_CYCLE.length];
   }
-  function wirePath(a, b){
+  /* direction de sortie d'un fil : vers l'extérieur du composant (haut, bas, gauche ou droite) */
+  function keyDir(k){
+    const [id, pid] = k.split(':'); const c = $c(id); if(!c) return [0, 1];
+    const d = TYPES[c.type]; const [px, py] = pinPos(c, pid); const r = ((c.rot || 0) / 90) % 2 === 1;
+    const hw = (r ? d.h : d.w) / 2, hh = (r ? d.w : d.h) / 2; const dx = (px - c.x - d.w / 2) / hw, dy = (py - c.y - d.h / 2) / hh;
+    if(Math.abs(dy) >= Math.abs(dx) * .9) return [0, dy < 0 ? -1 : 1];
+    return [dx < 0 ? -1 : 1, 0];
+  }
+  B.keyDir = keyDir;
+  function wirePath(a, b, da, db){
     const [x1, y1] = a, [x2, y2] = b; const d = Math.hypot(x2 - x1, y2 - y1);
-    const sag = Math.min(70, d * 0.22) + 8;
-    return `M${x1} ${y1} C${x1} ${y1 + sag} ${x2} ${y2 + sag} ${x2} ${y2}`;
+    const sag = Math.min(70, d * 0.22) + 8; da = da || [0, 1]; db = db || [0, 1];
+    return `M${x1} ${y1} C${x1 + da[0] * sag} ${y1 + da[1] * sag} ${x2 + db[0] * sag} ${y2 + db[1] * sag} ${x2} ${y2}`;
   }
   function compXform(c){ const d = TYPES[c.type]; return `translate(${c.x} ${c.y})` + (c.rot ? ` rotate(${c.rot} ${d.w/2} ${d.h/2})` : ''); }
 
@@ -1739,7 +2058,7 @@ function Board(svg, api){
     const used = new Set();
     C.wires.forEach((w, i) => {
       used.add(w.a); used.add(w.b);
-      const dpath = wirePath(keyPos(w.a), keyPos(w.b)); const col = wireColor(w, i);
+      const dpath = wirePath(keyPos(w.a), keyPos(w.b), keyDir(w.a), keyDir(w.b)); const col = wireColor(w, i);
       s += `<g class="wg" data-w="${w.id}"><path class="wirebg" d="${dpath}"/><path class="wire${B.sel && B.sel.wire === w.id ? ' sel' : ''}" d="${dpath}" stroke="${col}"/><path class="whit" d="${dpath}"/></g>`;
     });
     // bornes (trous de la plaque d'abord, pour que les pattes des composants restent cliquables)
@@ -1770,7 +2089,7 @@ function Board(svg, api){
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     for(const c of C.comps){ const d = TYPES[c.type]; const r = ((c.rot || 0) / 90) % 2 === 1; const w = r ? d.h : d.w, h = r ? d.w : d.h; const cx = c.x + d.w/2, cy = c.y + d.h/2;
       x0 = Math.min(x0, cx - w/2); y0 = Math.min(y0, cy - h/2 - 18); x1 = Math.max(x1, cx + w/2); y1 = Math.max(y1, cy + h/2 + 10); }
-    C.wires.forEach(w => { const a = keyPos(w.a), b = keyPos(w.b); y1 = Math.max(y1, Math.max(a[1], b[1]) + 30); });
+    C.wires.forEach(w => { const a = keyPos(w.a), b = keyPos(w.b), da = keyDir(w.a), db = keyDir(w.b); for(const [p, q] of [[a, da], [b, db]]){ if(q[1] > 0) y1 = Math.max(y1, p[1] + 30); if(q[1] < 0) y0 = Math.min(y0, p[1] - 30); } });
     const rect = svg.getBoundingClientRect(); const W = rect.width || 800, H = rect.height || 600;
     const pad = 24; const aw = Math.max(120, W - inset.l - pad*2), ah = Math.max(120, H - inset.t - pad*2);
     const bw = x1 - x0, bh = y1 - y0; let s = Math.min(aw / bw, ah / bh, 1.6);
@@ -1794,7 +2113,7 @@ function Board(svg, api){
     const ph = e.target.closest && e.target.closest('.pinhit');
     if(!act || act.type === 'wire-click'){ if(ph) tip(B.tipText(ph.dataset.pin), +ph.getAttribute('cx'), +ph.getAttribute('cy')); else tip(''); }
     stripHL(ph && ph.classList.contains('bbh') ? ph.dataset.pin : (ph && B.plugs && B.plugs.get(ph.dataset.pin)) || null);
-    if(B.wiring){ const [x, y] = keyPos(B.wiring.from); const r = svg.querySelector('#rubber'); if(r){ r.setAttribute('d', wirePath([x, y], [p.x, p.y])); r.setAttribute('stroke', B.nextColor()); } }
+    if(B.wiring){ const [x, y] = keyPos(B.wiring.from); const r = svg.querySelector('#rubber'); if(r){ r.setAttribute('d', wirePath([x, y], [p.x, p.y], keyDir(B.wiring.from), [0, 0])); r.setAttribute('stroke', B.nextColor()); } }
     if(!act) return;
     if(act.type === 'move'){ const c = $c(act.id); const nx = Math.round((act.cx + p.x - act.px) / 5) * 5, ny = Math.round((act.cy + p.y - act.py) / 5) * 5;
       const ox = c.x, oy = c.y; c.x = nx; c.y = ny; if(c.type !== 'bb') snapToBB(c);
@@ -1819,6 +2138,7 @@ function Board(svg, api){
         else if(c.type === 'switch'){ c.p.on = !c.p.on; api.onParam(c); B.render(); }
         else if(c.type === 'pot' && e.target.closest('.knobg')){ act = {type:'knob', id:c.id, sy:e.clientY, sx:e.clientX, v0:c.p.v}; }
         else if(c.type === 'pir' && e.target.closest('.dome')){ api.motion(c.id); }
+        else if(c.type === 'rfid' && e.target.closest('.badge')){ api.badge(c.id); }
         else if(c.type === 'uno' && e.target.closest('.rst')){ api.reset(); }
         select({comp:c.id}); return; }
       if(ph){ tip(B.tipText(ph.dataset.pin), +ph.getAttribute('cx'), +ph.getAttribute('cy')); return; }
@@ -1858,7 +2178,7 @@ function Board(svg, api){
 
   function addWire(a, b){
     const C = B.circ;
-    if(a.split(':')[0] === b.split(':')[0] && TYPES[$c(a.split(':')[0]).type].type !== 'uno' && TYPES[$c(a.split(':')[0]).type].type !== 'rail' && TYPES[$c(a.split(':')[0]).type].type !== 'bb'){ api.hint('Un fil entre deux pattes du même composant le court-circuite : relie-le plutôt à un autre composant.'); }
+    if(a.split(':')[0] === b.split(':')[0] && TYPES[$c(a.split(':')[0]).type].type !== 'uno' && TYPES[$c(a.split(':')[0]).type].type !== 'rail' && TYPES[$c(a.split(':')[0]).type].type !== 'bb' && TYPES[$c(a.split(':')[0]).type].type !== 'resnet'){ api.hint('Un fil entre deux pattes du même composant le court-circuite : relie-le plutôt à un autre composant.'); }
     if(C.wires.some(w => (w.a === a && w.b === b) || (w.a === b && w.b === a))){ api.hint('Ces deux bornes sont déjà reliées.'); return; }
     const col = WIRE_COLORS[B.colorIdx].id;
     C.wires.push({id:'w' + (C.next++), a, b, color:col});
@@ -2163,10 +2483,179 @@ const DEFIS = [
   }},
 ];
 
+/* ---------------- NIVEAUX 5 et 6 : afficheurs et modules ---------------- */
+LEVELS.push({n:5, nom:'Afficheurs', sub:'7 segments, écran LCD'}, {n:6, nom:'Modules', sub:'ultrason, RFID'});
+const segList = bits => SEGS.filter((s, k) => bits & (1 << k)).join(', ');
+const lcdNum = t => { const m = String(t).match(/-?\d+/); return m ? +m[0] : null; };
+const hexNorm = t => String(t).toUpperCase().replace(/0X/g, '').replace(/[^0-9A-F]/g, '');
+DEFIS.push(
+{id:'n5-compte', lv:5, t:'Compte à rebours',
+  obj:'L’afficheur 7 segments compte à rebours de 9 à 0, un chiffre par seconde, puis recommence à 9.',
+  mat:'1 afficheur 7 segments à cathode commune, 1 réseau de 8 résistances de 220 Ω.',
+  steps:['Relie les broches 2 à 8 aux entrées 1 à 7 du réseau de résistances, puis les sorties 1 à 7 aux segments a, b, c, d, e, f, g (dans cet ordre).', 'Relie une borne − de l’afficheur au GND.', 'Programme : pour n de 9 à 0, affiche n puis attends 1 seconde.'],
+  hints:['Survole les pattes de l’afficheur pour lire le nom de chaque segment : elles ne sont pas dans l’ordre a, b, c… sur le boîtier.', 'Blocs : catégorie « Afficheurs », bloc « 7 segments (a sur la broche 2) : afficher … » dans une boucle « pour n de 9 à 0 ». En C, un tableau de 10 octets donne les segments de chaque chiffre : bitRead(CHIFFRES[n], s).'],
+  comps:[C_('aff', 'seg7', 150, 40, {}, 'AFF1'), C_('rn', 'resnet', 300, 40, {r:220}, 'RN1')], dur:7600,
+  async test(T){
+    const s = await T.sample(() => T.digit('aff'), 7200);
+    if(s.every(x => x === -1 || x === null)) T.fail('L’afficheur reste éteint. ' + T.diag('aff'));
+    const r = runsOf(s, T.step);
+    const bad = r.find(x => typeof x.v === 'string' && x.d > 150);
+    if(bad) T.fail('Le chiffre affiché n’est pas reconnaissable : segments allumés ' + segList(+bad.v.slice(1)) + '. Vérifie que la broche 2 va au segment a, la 3 au b… jusqu’à la 8 au g.');
+    const seq = r.filter(x => typeof x.v === 'number' && x.v >= 0 && x.d > 150);
+    if(seq.length < 4) T.fail('Les chiffres changent trop lentement ou pas du tout : on attend un nouveau chiffre chaque seconde.');
+    for(let i = 0; i + 1 < seq.length; i++){ const want = (seq[i].v + 9) % 10; if(seq[i + 1].v !== want) T.fail('Après le ' + seq[i].v + ', on attend le ' + want + ' ; l’afficheur montre ' + seq[i + 1].v + '.'); }
+    for(const x of seq.slice(1, -1)) if(Math.abs(x.d - 1000) > 250) T.fail('Le ' + x.v + ' reste affiché ' + sec(x.d) + ' au lieu de 1 s.');
+    return 'Bravo, décollage imminent ! Chaque chiffre est une combinaison de 7 LED : le tableau CHIFFRES en code les 10 possibilités.';
+  }},
+{id:'n5-de', lv:5, t:'Dé électronique',
+  obj:'À chaque appui sur le bouton, l’afficheur montre un nombre au hasard de 1 à 6, qui reste affiché jusqu’à l’appui suivant.',
+  mat:'1 afficheur 7 segments, 1 réseau de 8 résistances, 1 bouton poussoir, 1 résistance de 10 kΩ.',
+  steps:['Afficheur câblé comme pour le compte à rebours (segments a à g sur les broches 2 à 8).', 'Bouton entre le 5 V et la broche 10, résistance de 10 kΩ entre la broche 10 et GND.', 'Quand le bouton est appuyé : tire un nombre, affiche-le, puis attends que le bouton soit relâché.'],
+  hints:['Bloc « nombre au hasard de 1 à 6 » (catégorie Opérateurs) dans le bloc « 7 segments : afficher ».', 'Sans « attendre jusqu’à <non <broche 10 est à HAUT>> », le dé change sans arrêt tant qu’on appuie.'],
+  comps:[C_('aff', 'seg7', 150, 40, {}, 'AFF1'), C_('rn', 'resnet', 270, 40, {r:220}, 'RN1'), C_('btn', 'button', 420, 60, {}, 'BOUTON'), C_('r10k', 'resistor', 410, 130, {r:10000})], dur:7600,
+  async test(T){
+    const seen = new Set();
+    for(let k = 0; k < 7; k++){
+      await T.click('btn', 200); await T.wait(350);
+      const s = await T.sample(() => T.digit('aff'), 500);
+      const d = s[0];
+      if(d === -1 || d === null){ if(k === 0) T.fail('Après un appui, l’afficheur reste éteint. ' + T.diag('aff') + T.floatHint()); }
+      if(typeof d === 'string') T.fail('Le chiffre affiché n’est pas reconnaissable : segments allumés ' + segList(+d.slice(1)) + '. Vérifie l’ordre des segments a à g.');
+      if(typeof d === 'number' && (d < 1 || d > 6)) T.fail('Le dé affiche ' + d + ' : il doit donner un nombre de 1 à 6. Avec random(a, b), b n’est jamais atteint : random(1, 7).');
+      if(s.some(x => x !== d)) T.fail('Le chiffre change alors que personne n’appuie : il doit rester affiché jusqu’à l’appui suivant.' + T.floatHint());
+      seen.add(d);
+    }
+    if(seen.size < 2) T.fail('Le dé affiche toujours ' + [...seen][0] + ' : utilise un nombre au hasard.');
+    return 'Bravo, le dé est équilibré ! random(1, 7) donne 1, 2, 3, 4, 5 ou 6 avec la même chance.';
+  }},
+{id:'n5-chrono', lv:5, t:'Chronomètre LCD',
+  obj:'L’écran LCD affiche « Chrono » sur la première ligne et, sur la deuxième, le nombre de secondes écoulées depuis le démarrage.',
+  mat:'1 écran LCD 16×2 avec module I2C (adresse 0x27).',
+  steps:['Écran : GND au GND, VCC au 5 V, SDA sur A4, SCL sur A5.', 'Au démarrage : initialise l’écran, allume le rétroéclairage, écris « Chrono ».', 'En boucle : place le curseur au début de la ligne 2 (colonne 0, ligne 1) et écris millis() / 1000.'],
+  hints:['Les lignes et les colonnes se comptent à partir de 0 : la deuxième ligne est la ligne 1.', 'En C : <code>#include &lt;LiquidCrystal_I2C.h&gt;</code>, <code>LiquidCrystal_I2C lcd(0x27, 16, 2);</code>, puis <code>lcd.init(); lcd.backlight();</code> dans setup().'],
+  comps:[C_('lcd', 'lcd', 120, 30, {addr:0x27}, 'LCD')], dur:4600,
+  async test(T){
+    await T.wait(1200);
+    let rows = T.lcd('lcd');
+    if(!rows[0] && !rows[1]) T.fail('L’écran n’affiche rien. ' + T.diag('lcd'));
+    if(!/chrono/i.test(rows[0])) T.fail('La première ligne doit afficher « Chrono » ; elle affiche « ' + rows[0] + ' ».');
+    const n1 = lcdNum(rows[1]); if(n1 === null) T.fail('La deuxième ligne doit afficher le nombre de secondes ; elle affiche « ' + rows[1] + ' ».');
+    await T.wait(3000); rows = T.lcd('lcd');
+    const n2 = lcdNum(rows[1]);
+    if(/\d[.,]\d/.test(rows[1])) T.fail('Le chronomètre affiche des décimales (« ' + rows[1] + ' ») : on attend des secondes entières.');
+    if(n2 === null || n2 - n1 < 2 || n2 - n1 > 4) T.fail('En 3 secondes, le chronomètre passe de ' + n1 + ' à ' + n2 + ' : il doit compter les secondes (millis() / 1000).');
+    return 'Bravo ! millis() compte les millisecondes depuis le démarrage : divisé par 1000, ça donne les secondes.';
+  }},
+{id:'n6-telemetre', lv:6, t:'Télémètre à ultrason',
+  obj:'Mesure la distance de l’obstacle avec le capteur HC-SR04 et affiche-la en centimètres dans le moniteur série, plusieurs fois par seconde.',
+  mat:'1 capteur à ultrason HC-SR04.',
+  steps:['Capteur : VCC au 5 V, GND au GND, Trig sur la broche 9, Echo sur la broche 10.', 'Envoie une impulsion de 10 µs sur Trig, puis mesure la durée de l’écho avec pulseIn(10, HIGH).', 'Le son fait l’aller-retour : distance (cm) = durée (µs) ÷ 58.'],
+  hints:['Bloc « distance en cm (Trig 9, Echo 10) » dans la catégorie Modules : il fait l’impulsion et le calcul pour toi.', 'En C : <code>digitalWrite(9, HIGH); delayMicroseconds(10); digitalWrite(9, LOW);</code> puis <code>long duree = pulseIn(10, HIGH);</code>'],
+  comps:[C_('us', 'sr04', 200, 40, {cm:50}, 'US1')], dur:4400,
+  async test(T){
+    for(const cm of [30, 120, 250]){
+      T.dist('us', cm); await T.wait(250); T.serialClear(); await T.wait(900);
+      const n = T.serialNums();
+      if(!n.length) T.fail('Rien ne s’affiche dans le moniteur série. Il faut Serial.begin(9600) et Serial.println(…).' + (T.isPowered('us') ? '' : ' ' + T.diag('us')));
+      const v = n[n.length - 1];
+      if(v === 0) T.fail('La distance mesurée vaut 0. ' + T.diag('us'));
+      if(Math.abs(v - cm * 58) < cm * 3) T.fail('Obstacle à ' + cm + ' cm : le moniteur affiche ' + v + ', c’est la durée de l’écho en µs. Divise-la par 58 pour obtenir des centimètres.');
+      if(Math.abs(v - cm) > 3) T.fail('Obstacle à ' + cm + ' cm : le moniteur affiche ' + v + '. Vérifie le calcul : distance = durée ÷ 58.');
+    }
+    return 'Bravo ! Le son parcourt 343 m/s : il lui faut 58 µs pour faire l’aller-retour d’un centimètre.';
+  }},
+{id:'n6-recul', lv:6, t:'Radar de recul',
+  obj:'Comme une voiture : au-delà de 50 cm, silence ; entre 20 et 50 cm, le buzzer bipe ; à moins de 20 cm, il sonne en continu.',
+  mat:'1 capteur à ultrason HC-SR04, 1 buzzer.',
+  steps:['Capteur câblé comme pour le télémètre (Trig 9, Echo 10). Buzzer : + sur la broche 8, − au GND.', 'Mesure la distance, puis choisis : son continu, bips ou silence.', 'Un bip = buzzer allumé 100 ms, puis éteint 200 ms.'],
+  hints:['Deux « si … sinon » imbriqués : si distance < 20 → continu ; sinon si distance ≤ 50 → bip ; sinon → silence.', 'Range la distance dans une variable : une seule mesure par tour de boucle.'],
+  comps:[C_('us', 'sr04', 160, 40, {cm:100}, 'US1'), C_('bz', 'buzzer', 380, 40, {}, 'BUZZER')], dur:7200,
+  async test(T){
+    T.dist('us', 120); await T.wait(600);
+    let s = await T.sample(() => T.buzz('bz'), 1000);
+    if(s.some(x => x)) T.fail('Obstacle à 120 cm : le buzzer doit rester silencieux.' + (T.isPowered('us') ? '' : ' ' + T.diag('us')));
+    T.dist('us', 35); await T.wait(500);
+    s = await T.sample(() => T.buzz('bz'), 1800);
+    const on = runsOf(s, T.step).filter(x => x.v === true);
+    if(!on.length) T.fail('Obstacle à 35 cm : le buzzer doit biper, il reste silencieux. ' + T.diag('bz'));
+    if(on.length < 3) T.fail('Obstacle à 35 cm : on attend des bips répétés (allumé, éteint, allumé…), pas un son continu.');
+    T.dist('us', 10); await T.wait(500);
+    s = await T.sample(() => T.buzz('bz'), 1000);
+    if(s.filter(x => x).length < s.length * .9) T.fail('Obstacle à 10 cm : le buzzer doit sonner en continu.');
+    T.dist('us', 120); await T.wait(600);
+    if(T.buzz('bz')) T.fail('Quand l’obstacle s’éloigne (120 cm), le buzzer doit se taire.');
+    return 'Bravo, garé sans une rayure ! C’est exactement le principe des radars de recul des voitures.';
+  }},
+{id:'n6-lcddist', lv:6, t:'Télémètre à écran',
+  obj:'L’écran LCD affiche « Distance : » sur la première ligne et la distance mesurée, par exemple « 42 cm », sur la deuxième.',
+  mat:'1 capteur à ultrason HC-SR04, 1 écran LCD 16×2 I2C (adresse 0x27).',
+  steps:['Capteur : Trig sur 9, Echo sur 10. Écran : SDA sur A4, SCL sur A5, VCC et GND.', 'En boucle : mesure, efface l’écran, écris les deux lignes, puis attends 300 ms.', 'Teste en passant de loin à près : il ne doit pas rester de chiffres de l’ancienne mesure.'],
+  hints:['Si tu n’effaces pas l’écran, « 180 cm » suivi de « 40 cm » donne « 40 cmm » : les anciens caractères restent.', 'Blocs : « écran LCD : effacer », « écrire Distance : », « curseur colonne 0 ligne 1 », puis « écrire (assembler distance, " cm") ».'],
+  comps:[C_('us', 'sr04', 60, 40, {cm:80}, 'US1'), C_('lcd', 'lcd', 200, 30, {addr:0x27}, 'LCD')], dur:3600,
+  async test(T){
+    for(const cm of [180, 40]){
+      T.dist('us', cm); await T.wait(1100);
+      const rows = T.lcd('lcd');
+      if(!rows[0] && !rows[1]) T.fail('L’écran n’affiche rien. ' + T.diag('lcd') + (T.isPowered('us') ? '' : ' ' + T.diag('us')));
+      if(!/distance/i.test(rows[0])) T.fail('La première ligne doit afficher « Distance : » ; elle affiche « ' + rows[0] + ' ».');
+      const v = lcdNum(rows[1]);
+      if(v === null) T.fail('La deuxième ligne doit afficher la distance ; elle affiche « ' + rows[1] + ' ».');
+      if(Math.abs(v - cm) > 3) T.fail('Obstacle à ' + cm + ' cm : l’écran affiche « ' + rows[1] + ' ».' + (v === 0 ? ' ' + T.diag('us') : ''));
+      if(!/^\s*-?\d+\s*cm\s*$/i.test(rows[1])) T.fail('La deuxième ligne affiche « ' + rows[1] + ' » : ' + (/cm\S/i.test(rows[1]) || /\d+\s*cm.+/i.test(rows[1]) ? 'des caractères de l’ancienne mesure restent. Efface l’écran (lcd.clear()) avant d’écrire.' : 'on attend le nombre suivi de « cm ».'));
+    }
+    return 'Bravo ! Effacer puis réécrire à chaque mesure évite les « fantômes » de l’ancienne valeur.';
+  }},
+{id:'n6-badge', lv:6, t:'Lecteur de badges',
+  obj:'Quand on présente un badge au lecteur RFID, son code (UID) s’affiche en hexadécimal dans le moniteur série, par exemple « DE AD BE EF ».',
+  mat:'1 lecteur RFID RC522 et ses badges.',
+  steps:['Lecteur : SDA sur 10, SCK sur 13, MOSI sur 11, MISO sur 12, RST sur 9, GND au GND, 3,3 V au 3,3 V (pas au 5 V !).', 'Au démarrage : Serial.begin(9600), SPI.begin(), rfid.PCD_Init().', 'Pendant la simulation, clique sur le badge à droite du lecteur pour le présenter ; change de badge dans les propriétés du lecteur.'],
+  hints:['Bloc « si <un badge RFID est présenté> alors afficher (code du badge) ».', 'En C : <code>if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial())</code>, puis une boucle sur <code>rfid.uid.uidByte[i]</code> avec <code>Serial.print(…, HEX)</code>.'],
+  comps:[C_('rf', 'rfid', 140, 30, {badge:'bleu'}, 'RFID')], dur:3400,
+  async test(T){
+    await T.wait(400);
+    for(const k of ['bleu', 'blanche']){
+      const B = BADGES[k]; T.serialClear(); T.badge('rf', k); await T.wait(1100);
+      const txt = T.serialText(), h = hexNorm(txt), want = B.uid.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(''), loose = B.uid.map(b => b.toString(16).toUpperCase()).join('');
+      if(!txt.trim()) T.fail('On présente le ' + B.nom.toLowerCase() + ' mais rien ne s’affiche. ' + T.diag('rf'));
+      if(!h.includes(want) && !h.includes(loose)){
+        if(txt.includes(String(B.uid[0])) && txt.includes(String(B.uid[1]))) T.fail('Le code s’affiche en décimal (' + txt.trim().slice(0, 40) + ') : utilise Serial.print(valeur, HEX) pour l’hexadécimal.');
+        T.fail('Pour le ' + B.nom.toLowerCase() + ', on attend le code ' + uidText(B.uid) + ' ; le moniteur affiche « ' + txt.trim().slice(0, 60) + ' ».');
+      }
+    }
+    return 'Bravo ! Chaque badge a un identifiant unique de 4 octets : c’est lui que lisent les portiques et les badgeuses.';
+  }},
+{id:'n6-acces', lv:6, t:'Contrôle d’accès',
+  obj:'Seul le badge bleu (DE AD BE EF) ouvre la porte : LED verte allumée et servomoteur à 90° pendant 3 s, puis tout se referme. Tout autre badge allume la LED rouge pendant 2 s, et la porte reste fermée.',
+  mat:'1 lecteur RFID RC522, 1 servomoteur, 1 LED verte, 1 LED rouge, 2 résistances de 220 Ω.',
+  steps:['Lecteur câblé comme pour le lecteur de badges (SDA 10, SCK 13, MOSI 11, MISO 12, RST 9, 3,3 V).', 'Servomoteur : signal sur la broche 5. LED verte sur la broche 6, LED rouge sur la broche 7, chacune avec sa résistance.', 'Au démarrage, la porte est fermée (0°).'],
+  hints:['Compare le code lu au code autorisé : si <(code du badge) est égal à (DE AD BE EF)> alors … sinon …', 'En C, construis le code dans un String puis compare-le : <code>if (code == "DE AD BE EF")</code>. String(octet, HEX) donne des minuscules : <code>code.toUpperCase();</code>'],
+  comps:[C_('rf', 'rfid', 0, 20, {badge:'blanche'}, 'RFID'), C_('srv', 'servo', 200, 40, {}, 'PORTE'), C_('lv', 'led', 350, 30, {color:'verte'}, 'VERTE'), C_('lr', 'led', 420, 30, {color:'rouge'}, 'ROUGE'),
+    C_('r1', 'resistor', 480, 40, {r:220}), C_('r2', 'resistor', 480, 90, {r:220})], dur:9800,
+  async test(T){
+    await T.wait(800);
+    if(T.servo('srv') > 15) T.fail('Au démarrage, la porte doit être fermée (0°). Angle : ' + Math.round(T.servo('srv')) + '°.' + (T.isPowered('srv') ? '' : ' ' + T.diag('srv')));
+    if(T.b('lv') > .3 || T.b('lr') > .3) T.fail('Au repos, les deux LED doivent être éteintes.');
+    T.badge('rf', 'blanche'); await T.wait(700);
+    if(T.servo('srv') > 15) T.fail('La carte blanche n’est pas autorisée, mais la porte s’ouvre. Compare le code du badge au code DE AD BE EF.');
+    if(T.b('lv') > .3) T.fail('La carte blanche allume la LED verte : seul le badge bleu est autorisé.');
+    if(T.b('lr') < .3) T.fail('La carte blanche est refusée : la LED rouge doit s’allumer. ' + (T.floatingAny() ? '' : T.diag('lr')));
+    await T.wait(2300);
+    if(T.b('lr') > .3) T.fail('La LED rouge doit s’éteindre après 2 secondes.');
+    T.badge('rf', 'bleu'); await T.wait(1000);
+    if(T.b('lv') < .3) T.fail('Le badge bleu est autorisé : la LED verte doit s’allumer. ' + T.diag('lv'));
+    if(T.servo('srv') < 80) T.fail('Le badge bleu est autorisé : la porte doit s’ouvrir à 90°. Angle : ' + Math.round(T.servo('srv')) + '°. ' + (T.isPowered('srv') ? '' : T.diag('srv')));
+    if(T.b('lr') > .3) T.fail('Le badge bleu ne doit pas allumer la LED rouge.');
+    await T.wait(3300);
+    if(T.servo('srv') > 15) T.fail('La porte doit se refermer après 3 secondes.');
+    if(T.b('lv') > .3) T.fail('La LED verte doit s’éteindre quand la porte se referme.');
+    return 'Bravo ! Lecture, comparaison, action : c’est le cœur de toutes les serrures électroniques.';
+  }},
+);
+
 /* =====================================================================
    APPLICATION — état, exécution, défis, sauvegarde, interface
    ===================================================================== */
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const $ = s => document.querySelector(s);
 const STORE = 'labo-arduino-v1', NAMEKEY = 'labo-arduino-nom', SNDKEY = 'labo-arduino-son', WKEY = 'labo-arduino-largeur';
 const CODE_TEMPLATE = 'void setup() {\n  // s’exécute une seule fois, au démarrage\n\n}\n\nvoid loop() {\n  // se répète sans fin\n\n}\n';
@@ -2206,7 +2695,7 @@ let SANDBOX = false;
 function save(){ if(SANDBOX) return; clearTimeout(saveT); saveT = setTimeout(() => { ST.work[D ? D.id : 'libre'] = {circ, prog:progS}; ST.cur = D ? D.id : 'libre'; wsSet(STORE, JSON.stringify(ST)); commit(); }, 300); }
 
 /* ---------------- simulation ---------------- */
-const SIM = {running:false, rt:null, api:null, nets:null, R:null, dirty:true, mem:null, inputs:{press:{}, motionUntil:{}}, warns:new Map(), servoAng:{}, txUntil:0, serialAll:'', serialMark:0, gen:0, stopWhy:'', testing:false};
+const SIM = {running:false, rt:null, api:null, nets:null, R:null, dirty:true, mem:null, inputs:{press:{}, motionUntil:{}, rfid:{}}, warns:new Map(), servoAng:{}, txUntil:0, serialAll:'', serialMark:0, gen:0, stopWhy:'', testing:false};
 function resetMem(){ SIM.mem = {burned:new Set(), dstate:{}, mod:{}}; }
 resetMem();
 function addWarn(k, t){ if(!SIM.warns.has(k)){ SIM.warns.set(k, t); renderWarns(); } }
@@ -2240,6 +2729,49 @@ const hooks = {
     if(R.floating(net)){ addWarn('fl' + n, 'Entrée ' + pinName(n) + ' « en l’air » : analogRead() lit du bruit. Relie-la à un capteur ou à un pont diviseur.'); return Math.round(300 + Math.random() * 400); }
     return Math.max(0, Math.min(1023, Math.round(R.V[net] / 5 * 1023)));
   },
+  /* HC-SR04 : durée de l'écho en µs, si Trig a reçu une impulsion depuis la dernière mesure */
+  pulseIn(p, level){
+    const R = ensureSolved(); if(!R) return 0; const rt = SIM.rt; const net = SIM.nets.netOf.get(pinNetKey(p)); const now = performance.now();
+    const since = rt.lastPulseIn || 0; rt.lastPulseIn = now;
+    const us = circ.comps.filter(c => c.type === 'sr04' && SIM.nets.netOf.get(c.id + ':ECHO') === net);
+    if(!us.length){ addWarn('pin' + p, 'pulseIn(' + (p >= 14 ? pinName(p) : p) + ') : aucun capteur à ultrason n’est relié à cette broche par sa borne Echo. Résultat : 0.'); return 0; }
+    const c = us[0];
+    if(!SIM.mem.mod[c.id]){ addWarn('pw' + c.id, (c.label || c.id) + ' n’est pas alimenté : relie VCC au 5 V et GND au GND de l’Arduino.'); return 0; }
+    if(level !== 1) return 0;
+    const tnet = SIM.nets.netOf.get(c.id + ':TRIG');
+    const trig = rt.pins.findIndex((P, i) => P.mode === 1 && SIM.nets.netOf.get(pinNetKey(i)) === tnet);
+    if(trig < 0){ addWarn('trig' + c.id, 'La borne Trig de ' + (c.label || c.id) + ' n’est reliée à aucune broche en SORTIE : le capteur n’envoie jamais d’ultrason. pulseIn() renvoie 0.'); return 0; }
+    if(!(rt.pins[trig].lastHigh >= since)){ addWarn('trigp' + c.id, 'Avant pulseIn(), envoie une impulsion sur Trig : digitalWrite(' + trig + ', HIGH); delayMicroseconds(10); digitalWrite(' + trig + ', LOW);'); return 0; }
+    rt.ping = rt.ping || {}; rt.ping[c.id] = now; SIM.dirty = true;
+    const cm = Math.max(2, Math.min(400, c.p.cm));
+    return Math.round(cm * 58 + 22 + (Math.random() - .5) * 8);
+  },
+  /* RC522 : recherche du lecteur relié en SPI, vérifie le câblage */
+  rfidCheck(ss, rst){
+    const R = ensureSolved(); if(!R) return null; const N = SIM.nets.netOf; const pn = p => N.get(pinNetKey(p));
+    const list = circ.comps.filter(c => c.type === 'rfid');
+    if(!list.length){ addWarn('rfid0', 'rfid.PCD_Init() : aucun lecteur RFID sur le plan de câblage.'); return null; }
+    const c = list.find(x => N.get(x.id + ':SDA') === pn(ss));
+    const nm = c ? (c.label || c.id) : (list[0].label || list[0].id);
+    const wr = (k, t) => { addWarn(k, t); return null; };
+    if(!c) return wr('rfidss', 'La borne SDA de ' + nm + ' doit être reliée à la broche ' + ss + ' (celle indiquée dans MFRC522 rfid(' + ss + ', ' + rst + ')).');
+    if(N.get(c.id + ':SCK') !== pn(13)) return wr('rfidsck', 'La borne SCK de ' + nm + ' doit être reliée à la broche 13 (horloge SPI de l’Uno).');
+    if(N.get(c.id + ':MOSI') !== pn(11)) return wr('rfidmosi', 'La borne MOSI de ' + nm + ' doit être reliée à la broche 11.');
+    if(N.get(c.id + ':MISO') !== pn(12)) return wr('rfidmiso', 'La borne MISO de ' + nm + ' doit être reliée à la broche 12.');
+    if(N.get(c.id + ':RST') !== pn(rst)) return wr('rfidrst', 'La borne RST de ' + nm + ' doit être reliée à la broche ' + rst + '.');
+    if(!SIM.mem.mod[c.id]) return wr('pw' + c.id, nm + ' n’est pas alimenté : relie sa borne 3,3 V au 3,3 V et GND au GND de l’Arduino.');
+    return c.id;
+  },
+  rfidPresent(id){ const k = SIM.inputs.rfid[id]; return !!(k && k.until > performance.now() && !k.read && SIM.mem.mod[id]); },
+  rfidRead(id){ const k = SIM.inputs.rfid[id]; if(!k || k.read || !(k.until > performance.now()) || !SIM.mem.mod[id]) return null; k.read = true; k.readAt = performance.now(); SIM.dirty = true; return k.uid.slice(); },
+  lcdCheck(addr){
+    const R = ensureSolved(); if(!R) return;
+    const list = circ.comps.filter(c => c.type === 'lcd');
+    if(!list.length) return;
+    if(!list.some(c => c.p.addr === addr)) addWarn('lcdaddr', 'Aucun écran LCD à l’adresse 0x' + addr.toString(16).toUpperCase() + ' : l’écran du montage est à l’adresse 0x' + list[0].p.addr.toString(16).toUpperCase() + '. Corrige l’adresse dans LiquidCrystal_I2C lcd(…).');
+    for(const c of list){ const N = SIM.nets.netOf;
+      if(N.get(c.id + ':SDA') !== N.get('ard:A4') || N.get(c.id + ':SCL') !== N.get('ard:A5')) addWarn('lcdw' + c.id, (c.label || c.id) + ' : sur l’Uno, SDA se branche sur A4 et SCL sur A5.'); }
+  },
 };
 function currentSource(){ return progS.mode === 'code' ? progS.code : genCode(progS.blocks).code; }
 
@@ -2249,7 +2781,7 @@ async function start(){
   try { factory = compileProgram(currentSource()); }
   catch(e){ showErr(e.message, e.line); return false; }
   SIM.warns.clear(); renderWarns(); resetMem();
-  SIM.inputs.motionUntil = {}; SIM.servoAng = {}; SIM.serialAll = ''; SIM.serialMark = 0; serialDirty = true;
+  SIM.inputs.motionUntil = {}; SIM.inputs.rfid = {}; SIM.servoAng = {}; SIM.serialAll = ''; SIM.serialMark = 0; serialDirty = true;
   SIM.nets = buildNets(circ);
   const {rt, api} = makeRuntime(hooks); SIM.rt = rt; SIM.api = api;
   rt.running = true; rt.t0 = performance.now(); rt.lastYield = rt.t0; SIM.running = true; SIM.dirty = true; SIM.R = null; SIM.stopWhy = '';
@@ -2345,6 +2877,14 @@ function clearAll(){
   feedback = null; board.select(null); setCirc(); renderCons(); save();
 }
 
+function presentBadge(id, key){
+  const c = circ.comps.find(x => x.id === id); if(!c) return;
+  if(key) c.p.badge = key; const B = BADGES[c.p.badge] || BADGES.bleu;
+  if(!SIM.running){ toast('Téléverse d’abord ton programme : le badge est lu pendant la simulation.'); return; }
+  SIM.inputs.rfid[id] = {uid:B.uid.slice(), until:performance.now() + 1500, read:false}; SIM.dirty = true;
+  if(key) board.render();
+}
+
 /* ---------------- plan de câblage ---------------- */
 const board = Board($('#board'), {
   onChange(kind){ save(); if(kind !== 'param') renderProps(); if(feedback && kind !== 'move'){ feedback = null; renderCons(); } },
@@ -2352,6 +2892,7 @@ const board = Board($('#board'), {
   onParam(c){ SIM.dirty = true; save(); renderPropsValues(c); },
   press(id, v){ SIM.inputs.press[id] = v; SIM.dirty = true; board.paint(ensureSolved()); },
   motion(id){ SIM.inputs.motionUntil[id] = performance.now() + 3000; SIM.dirty = true; },
+  badge(id){ presentBadge(id); },
   reset(){ start(); },
   hint: toast,
 });
@@ -2371,9 +2912,10 @@ function renderWarns(){
 const PAL = [
   ['Sorties', ['led', 'rgb', 'buzzer', 'servo', 'relay']],
   ['Entrées', ['button', 'switch', 'pot', 'ldr', 'tmp36', 'pir']],
-  ['Montage', ['bb', 'resistor', 'rail']],
+  ['Modules', ['seg7', 'lcd', 'sr04', 'rfid']],
+  ['Montage', ['bb', 'resistor', 'resnet', 'rail']],
 ];
-const PALN = {led:'LED', rgb:'LED RVB', buzzer:'Buzzer', servo:'Servo&shy;moteur', relay:'Relais + lampe', button:'Bouton poussoir', switch:'Interrup&shy;teur', pot:'Potentio&shy;mètre', ldr:'LDR (lumière)', tmp36:'TMP36 (tempé&shy;rature)', pir:'PIR (mouve&shy;ment)', resistor:'Résistance', rail:'Barrette', bb:'Breadboard'};
+const PALN = {led:'LED', rgb:'LED RVB', buzzer:'Buzzer', servo:'Servo&shy;moteur', relay:'Relais + lampe', button:'Bouton poussoir', switch:'Interrup&shy;teur', pot:'Potentio&shy;mètre', ldr:'LDR (lumière)', tmp36:'TMP36 (tempé&shy;rature)', pir:'PIR (mouve&shy;ment)', resistor:'Résistance', rail:'Barrette', bb:'Breadboard', seg7:'Afficheur 7 segments', lcd:'Écran LCD I2C', sr04:'Ultrason HC-SR04', rfid:'RFID RC522', resnet:'Réseau 8 résistances'};
 function iconSVG(type){
   const d = TYPES[type]; const c = {id:'ico', type, x:0, y:0, rot:0, p:Object.assign({}, d.params || {}), label:''};
   let pins = type === 'bb' ? '' : d.pins.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#f6f7f3" stroke="#1c232b" stroke-width="1.2"/>`).join('');
@@ -2426,6 +2968,11 @@ function renderProps(){
   if(c.type === 'pot') h += `<label>Position du curseur : <b id="pVv">${Math.round(c.p.v * 100)} %</b><input type="range" id="pV" min="0" max="100" value="${Math.round(c.p.v * 100)}"></label><p class="help">Tu peux aussi faire tourner le bouton du potentiomètre à la souris.</p>`;
   if(c.type === 'ldr') h += `<label>Lumière ambiante : <b id="pLv">${c.p.light} %</b><input type="range" id="pL" min="0" max="100" value="${c.p.light}"></label><p class="help" id="pLr">Résistance de la LDR : ${fmtOhm(Math.round(ldrR(c.p.light) / 10) * 10)}</p>`;
   if(c.type === 'tmp36') h += `<label>Température : <b id="pTv">${c.p.t} °C</b><input type="range" id="pT" min="-10" max="50" value="${c.p.t}"></label><p class="help">Tension de sortie : 0,5 V + 10 mV par °C.</p>`;
+  if(c.type === 'resnet') h += `<label>Valeur des 8 résistances<select id="pR"${lock}>${RVALS.map(r => `<option value="${r}"${c.p.r === r ? ' selected' : ''}>${fmtOhm(r)}</option>`).join('')}</select></label><p class="help">Huit résistances indépendantes : la borne du haut n° k est reliée à la borne du bas n° k par une résistance. Pratique pour un afficheur 7 segments.</p>`;
+  if(c.type === 'seg7') h += `<p class="help">Afficheur à cathode commune : chaque segment est une LED. Relie la borne − au GND et chaque segment (a à g) à une broche à travers une résistance de 220 Ω.</p>`;
+  if(c.type === 'sr04') h += `<label>Distance de l’obstacle : <b id="pDv">${Math.round(c.p.cm)} cm</b><input type="range" id="pD" min="2" max="400" value="${Math.round(c.p.cm)}"></label><p class="help">Le capteur envoie un ultrason quand Trig reçoit une impulsion de 10 µs ; la borne Echo reste à l’état HAUT pendant l’aller-retour du son : 58 µs par centimètre.</p>`;
+  if(c.type === 'lcd') h += `<label>Adresse I2C<select id="pA"${lock}>${[0x27, 0x3F].map(v => `<option value="${v}"${c.p.addr === v ? ' selected' : ''}>0x${v.toString(16).toUpperCase()}</option>`).join('')}</select></label><p class="help">Sur l’Uno : SDA sur A4, SCL sur A5, VCC au 5 V. Programme : LiquidCrystal_I2C lcd(0x${c.p.addr.toString(16).toUpperCase()}, 16, 2); puis lcd.init(); et lcd.backlight();</p>`;
+  if(c.type === 'rfid') h += `<label>Badge<select id="pB">${Object.entries(BADGES).map(([k, b]) => `<option value="${k}"${c.p.badge === k ? ' selected' : ''}>${b.nom} — ${uidText(b.uid)}</option>`).join('')}</select></label><div class="row"><button class="btn primary" id="pBadge"${R ? '' : ' disabled'}>Présenter le badge</button></div><p class="help">Pendant la simulation, clique sur le badge (à droite du lecteur) pour le poser sur l’antenne. Câblage SPI de l’Uno : SCK 13, MOSI 11, MISO 12, SDA 10, RST 9, alimentation 3,3 V.</p>`;
   if(c.type === 'switch') h += `<div class="row"><button class="btn" id="pSw">${c.p.on ? 'Ouvrir' : 'Fermer'} l’interrupteur</button></div>`;
   if(c.type === 'button') h += `<p class="help">Pendant la simulation, garde le clic enfoncé sur le bouton pour l’appuyer.</p>`;
   if(c.type === 'pir') h += `<div class="row"><button class="btn primary" id="pPir"${R ? '' : ' disabled'}>Simuler un passage</button></div><p class="help">La sortie OUT reste à l’état HAUT pendant 3 secondes après un mouvement.</p>`;
@@ -2442,6 +2989,10 @@ function renderProps(){
   on('#pV', 'input', e => { c.p.v = +e.target.value / 100; SIM.dirty = true; board.paint(SIM.R); renderPropsValues(c); save(); });
   on('#pL', 'input', e => { c.p.light = +e.target.value; SIM.dirty = true; board.paint(SIM.R); renderPropsValues(c); save(); });
   on('#pT', 'input', e => { c.p.t = +e.target.value; SIM.dirty = true; board.paint(SIM.R); renderPropsValues(c); save(); });
+  on('#pD', 'input', e => { c.p.cm = +e.target.value; SIM.dirty = true; board.paint(SIM.R); renderPropsValues(c); save(); });
+  on('#pA', 'change', e => { c.p.addr = +e.target.value; board.render(); save(); renderProps(); });
+  on('#pB', 'change', e => { c.p.badge = e.target.value; board.render(); save(); });
+  on('#pBadge', 'click', () => presentBadge(c.id));
   on('#pSw', 'click', () => { c.p.on = !c.p.on; SIM.dirty = true; board.render(); save(); renderProps(); });
   on('#pPir', 'click', () => { SIM.inputs.motionUntil[c.id] = performance.now() + 3000; SIM.dirty = true; });
   on('#pRot', 'click', () => board.rotateSel());
@@ -2453,6 +3004,7 @@ function renderPropsValues(c){
   if(c.type === 'pot'){ set('#pVv', Math.round(c.p.v * 100) + ' %'); const r = $('#pV'); if(r && document.activeElement !== r) r.value = Math.round(c.p.v * 100); }
   if(c.type === 'ldr'){ set('#pLv', c.p.light + ' %'); set('#pLr', 'Résistance de la LDR : ' + fmtOhm(Math.round(ldrR(c.p.light) / 10) * 10)); }
   if(c.type === 'tmp36') set('#pTv', c.p.t + ' °C');
+  if(c.type === 'sr04'){ set('#pDv', Math.round(c.p.cm) + ' cm'); const r = $('#pD'); if(r && document.activeElement !== r) r.value = Math.round(c.p.cm); }
 }
 function renderMeas(){
   const el = $('#pMeas'); if(!el) return; const s = board.sel; const R = SIM.R;
@@ -2468,6 +3020,10 @@ function renderMeas(){
   else if(c.type === 'relay') t = (st.on ? 'Relais collé : lampe allumée' : 'Relais au repos') + (st.powered ? '' : ' (non alimenté)');
   else if(c.type === 'buzzer') t = st.on ? 'Sonne à ' + Math.round(st.f) + ' Hz' : 'Silencieux';
   else if(c.type === 'rgb') t = st.burned ? 'LED grillée' : 'R ' + Math.round(st.rgb[0] * 100) + ' % · V ' + Math.round(st.rgb[1] * 100) + ' % · B ' + Math.round(st.rgb[2] * 100) + ' %';
+  else if(c.type === 'seg7'){ const dg = seg7Digit(st); t = st.burned ? 'Afficheur grillé' : dg === -1 || dg === null ? 'Afficheur éteint' : typeof dg === 'number' ? 'Affiche le chiffre ' + dg : 'Segments allumés : ' + SEGS.filter(s => st.seg[s] > .3).join(', '); }
+  else if(c.type === 'lcd') t = !st.powered ? 'Non alimenté' : !st.wired ? 'SDA/SCL mal reliés (A4 et A5)' : st.blocks ? 'Pas initialisé (lcd.init())' : 'Écran actif';
+  else if(c.type === 'sr04') t = (st.powered ? 'Obstacle à ' + Math.round(c.p.cm) + ' cm · écho ' + Math.round(c.p.cm * 58 + 22) + ' µs' : 'Non alimenté');
+  else if(c.type === 'rfid') t = !st.powered ? 'Non alimenté' : st.present ? 'Badge sur l’antenne' : 'En attente d’un badge';
   else if(c.type === 'pir') t = (st.motion ? 'Mouvement détecté' : 'Rien à signaler') + (st.powered ? '' : ' (non alimenté)');
   else if(c.type === 'uno') t = 'Courant fourni par le 5 V : ' + fmtI(Math.max(0, R.srcI['5V'] || 0));
   el.hidden = !t; el.textContent = t;
@@ -2576,6 +3132,11 @@ const TAPI = {
   light(id, v){ TAPI.comp(id).p.light = v; SIM.dirty = true; },
   temp(id, v){ TAPI.comp(id).p.t = v; SIM.dirty = true; },
   motion(id){ SIM.inputs.motionUntil[id] = performance.now() + 3000; SIM.dirty = true; },
+  digit(id){ return seg7Digit(TAPI.R().comp[id]); },
+  lcd(id){ const st = TAPI.R().comp[id]; return st && st.powered && !st.blocks ? st.rows.map(r => r.replace(/\s+$/, '')) : ['', '']; },
+  dist(id, cm){ TAPI.comp(id).p.cm = cm; SIM.dirty = true; },
+  badge(id, key){ TAPI.comp(id); presentBadge(id, key); },
+  serialText(){ return SIM.serialAll.slice(SIM.serialMark); },
   serialClear(){ SIM.serialMark = SIM.serialAll.length; },
   serialNums(){ const txt = SIM.serialAll.slice(SIM.serialMark); const out = []; txt.split('\n').forEach(l => { const m = l.match(/-?\d+(?:[.,]\d+)?/g); if(m) out.push(parseFloat(m[m.length - 1].replace(',', '.'))); }); return out; },
   mA(id){ const st = TAPI.R().comp[id]; return st ? fmtI(st.i || 0) : '?'; },
@@ -2586,7 +3147,9 @@ const TAPI = {
     const nm = c.label || id; const R = TAPI.R(); const st = R.comp ? R.comp[id] : null; const d = TYPES[c.type];
     if(SIM.mem.burned.has(id)) return nm + ' a grillé : il manque une résistance en série (220 Ω).';
     const pm = [...SIM.warns.keys()].find(k => k.startsWith('pm')); if(pm) return SIM.warns.get(pm);
-    const free = d.pins.filter(p => !SIM.nets.connected(id + ':' + p.id));
+    const mw = [...SIM.warns.entries()].find(([k]) => /^(rfid|spi|lcd|trig|r5)/.test(k) && (k.length < 9 || k.includes(id) || !/\d$/.test(k)));
+    if(['rfid', 'lcd', 'sr04'].includes(c.type) && mw) return mw[1];
+    const free = d.pins.filter(p => !p.opt && !SIM.nets.connected(id + ':' + p.id));
     if(free.length) return 'La borne « ' + free[0].n.split(' (')[0].split(' :')[0] + ' » de ' + nm + ' n’est reliée à rien.';
     if(st && st.rev) return nm + ' est branchée à l’envers : anode (+, patte longue) côté broche, cathode (−) côté GND.';
     if(d.powered && !SIM.mem.mod[id]) return nm + ' n’est pas alimenté : relie VCC (ou +) au 5 V et GND au GND de l’Arduino.';
@@ -2594,7 +3157,8 @@ const TAPI = {
     if(nets.size === 1 && d.pins.length > 1) return 'Toutes les pattes de ' + nm + ' sont reliées ensemble : il est court-circuité.';
     // nets reliés à travers les résistances
     const grp = new Map(); const f = x => { while(grp.has(x) && grp.get(x) !== x) x = grp.get(x); return x; };
-    circ.comps.filter(x => x.type === 'resistor').forEach(r => { const a1 = f(SIM.nets.netOf.get(r.id + ':1')), b1 = f(SIM.nets.netOf.get(r.id + ':2')); grp.set(a1, a1); if(a1 !== b1) grp.set(b1, a1); });
+    const link = (k1, k2) => { const a1 = f(SIM.nets.netOf.get(k1)), b1 = f(SIM.nets.netOf.get(k2)); grp.set(a1, a1); if(a1 !== b1) grp.set(b1, a1); };
+    circ.comps.forEach(r => { if(r.type === 'resistor') link(r.id + ':1', r.id + ':2'); if(r.type === 'resnet') for(let k = 1; k <= 8; k++) link(r.id + ':i' + k, r.id + ':o' + k); });
     const pinGroups = new Set([...Array(20).keys()].map(i => f(SIM.nets.netOf.get(pinNetKey(i)))));
     const used = d.pins.some(p => pinGroups.has(f(SIM.nets.netOf.get(id + ':' + p.id))));
     if(!used) return 'Le composant ' + nm + ' n’est relié à aucune broche numérotée de l’Arduino (0 à 13 ou A0 à A5).';
@@ -2697,7 +3261,7 @@ function loadProject(text){
 
 
 /* ---------------- mode prof ---------------- */
-const SECRET = {"salt":"YQS4DL8Qza6HEPmLvQpafQ==","iv":"/UAb+ozLowgBSb3W","iter":250000,"keys":[{"iv":"j0Sbawp8CyvtIU6P","k":"Bc6hJKcmXi58jiivOIculADYxwFaJkLQHNokSXoumMzLKzAqhWoDF/ulTW3nm/6D"}],"data":"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"};
+const SECRET = {"salt":"3sONDNMg4yTUGJj280JrqQ==","iv":"XXEL3ntUAtTqPGVr","iter":250000,"keys":[{"iv":"bX62Ehdj58frJr4z","k":"m+Othg6jlTMjgTZm2+ht3tVtUdOMyiIZ0SQH9/geTisfYdI2h/D/oAHrPGPfQJdZ"}],"data":"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"};
 let EDITION = 'eleve', PROF_ID = '', SOL = null, solConfirm = null;
 const b64 = str => Uint8Array.from(atob(str), ch => ch.charCodeAt(0));
 async function unlock(pwd){
@@ -2786,6 +3350,7 @@ $('#corrBody').addEventListener('click', e => {
 
 /* ---------------- aide : historique et suggestions ---------------- */
 const HIST = [
+  {v:'1.4', d:'15 octobre 2026', t:'Afficheurs et modules', l:['Nouveaux composants : afficheur 7 segments, réseau de 8 résistances, écran LCD 16×2 I2C, capteur à ultrason HC-SR04 et lecteur RFID RC522 avec trois badges.', 'Huit nouveaux défis sur deux niveaux : compte à rebours, dé électronique, chronomètre LCD, télémètre, radar de recul, télémètre à écran, lecteur de badges et contrôle d’accès.', 'Code C : bibliothèques LiquidCrystal_I2C et MFRC522, pulseIn(), String(valeur, HEX) ; les divisions entre nombres entiers (millis() / 1000) donnent un entier, comme sur la vraie carte.', 'Blocs : nouvelles catégories « Afficheurs » et « Modules ».']},
   {v:'1.3', d:'15 octobre 2026', t:'Capture et outils du Banc de câblage', l:['Bouton Capture (📷) : une image du travail avec le nom de l’élève, la date, le défi, le résultat de la vérification, le nombre d’essais, tout le montage et le programme, à copier, enregistrer ou partager vers Classroom. Rendue en haute résolution.', 'Version élève : le nom et le prénom doivent être indiqués pour téléverser ou vérifier un défi.', 'Le travail, le nom et les essais sont effacés quand on ferme l’application : l’élève suivant repart de zéro. Recharger la page ne fait rien perdre.', 'Annuler (Ctrl+Z) et Vider le montage ; la barre d’espace téléverse ou arrête le programme.', 'L’aide s’ouvre sur deux onglets (mode d’emploi et historique des versions) ; bouton « Proposer une amélioration ».']},
   {v:'1.2', d:'14 octobre 2026', t:'Application installable', l:['Mise en ligne sur GitHub Pages : l’application s’installe sur Chromebook, Android, PC ou iPhone et fonctionne hors connexion.', 'Mention « © 2026 Olivier Lesenfants. Tous droits réservés. » dans « À propos » : Labo Arduino est un logiciel propriétaire, non open source.']},
   {v:'1.1', d:'9 octobre 2026', t:'Breadboard et mode prof', l:['Plaque d’essai (breadboard) de 30 colonnes : les pattes des composants s’enfoncent dans les trous, les colonnes et les rails sont reliés comme sur une vraie plaque.', 'Mode prof protégé par mot de passe : solutions de tous les défis en blocs et en code C, indices affichés, correction des projets rendus par les élèves (revérifiés automatiquement).']},
