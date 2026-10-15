@@ -5,7 +5,7 @@
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
-  "id": "./",
+  "id": "/Labo-Arduino/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#e1e5e2",

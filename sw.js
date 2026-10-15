@@ -1,5 +1,5 @@
-// Labo Arduino – service worker (version 1.4)
-const CACHE = 'labo-arduino-1.4';
+// Labo Arduino – service worker (version 1.4.1)
+const CACHE = 'labo-arduino-1.4.1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
@@ -15,6 +15,11 @@ self.addEventListener('fetch', e => {
   if(req.mode === 'navigate'){
     e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); return res; })
       .catch(() => caches.match('./index.html')));
+    return;
+  }
+  // Manifeste : toujours la dernière version (identité de l'app à l'installation)
+  if(url.origin === location.origin && url.pathname.endsWith('manifest.webmanifest')){
+    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; }).catch(() => caches.match(req)));
     return;
   }
   // Polices Google et fichiers de l'app : copie locale, mise à jour en arrière-plan
