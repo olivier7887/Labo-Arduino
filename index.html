@@ -172,7 +172,7 @@ button{cursor:pointer}
 
 .banner{top:10px;left:50%;transform:translateX(-50%);max-width:calc(100% - 20px);width:max-content;padding:9px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:var(--danger);background:var(--danger-soft);color:var(--danger);font-weight:600;z-index:3}
 .warns{right:10px;bottom:10px;max-width:min(400px,calc(100% - 20px));padding:8px 11px;display:grid;gap:5px;background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-size:13.5px;font-weight:500;line-height:1.35;box-sizing:border-box;max-height:40%;overflow:auto}
-.hint{left:50%;bottom:10px;transform:translateX(-50%);padding:7px 12px;font-size:13.5px;max-width:calc(100% - 20px);background:var(--fg);color:var(--surface);border-color:var(--fg);pointer-events:none}
+.hint{position:fixed;z-index:70;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:7px 12px;font-size:13.5px;max-width:calc(100% - 20px);background:var(--fg);color:var(--surface);border-color:var(--fg);pointer-events:none}
 .zoomer{right:10px;top:10px;display:flex;flex-direction:column;padding:3px;gap:3px}
 .zoomer button{border:0;background:transparent;width:34px;height:32px;border-radius:7px;font-size:17px;color:var(--fg)}
 .zoomer button:hover{background:var(--chrome-2)}
@@ -278,6 +278,36 @@ table.corr td.num{font-variant-numeric:tabular-nums;text-align:right}
 table.corr td .btn{padding:3px 9px;font-size:13px}
 table.corr .empty{color:var(--muted);text-align:center;padding:18px}
 .st-ok{color:var(--ok);font-weight:600}.st-ko{color:var(--danger);font-weight:600}.st-wait{color:var(--muted)}
+.ftabs{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 4px}
+.ftab{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:6px 12px;font-weight:600;font-size:14px}
+.ftab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.hsum{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--paper);color:var(--ink);margin-top:12px}
+.hsum p{margin:4px 0}
+.hlist{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:0}
+.hlist>li{display:grid;grid-template-columns:86px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);max-width:none}
+.hlist>li:last-child{border-bottom:0}
+.hv{display:grid;align-content:start;gap:2px}
+.hv b{font-family:var(--font-display);font-size:20px;letter-spacing:.02em}
+.hv span{font-size:12.5px;color:var(--muted)}
+.hlist h4{margin:0 0 3px;font-size:15px}
+.hlist ul{margin:0;padding-left:18px;font-size:14px}
+.hlist ul li{line-height:1.4}
+.hfoot{position:sticky;bottom:-18px;z-index:2;background:var(--surface);border-top:1px solid var(--line);margin:14px -18px -18px;padding:10px 18px 14px;display:grid;gap:8px}
+.hfoot .row1{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hfoot .ver{font-size:13px;color:var(--muted)}
+.sugg{display:grid;gap:8px}
+.sugg .f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sugg input,.sugg select,.sugg textarea{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:7px 9px;font:inherit;font-size:14.5px;width:100%;box-sizing:border-box}
+.sugg textarea{min-height:96px;resize:vertical}
+.sugg .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sugg small{color:var(--muted);font-size:12.5px;line-height:1.4}
+.shotprev{border:1px solid var(--line);border-radius:10px;background:#fff;max-height:min(58vh,560px);overflow:auto;margin:10px 0}
+.shotprev img{display:block;width:100%;height:auto}
+.shotacts{display:flex;gap:8px;flex-wrap:wrap}
+.shotnote{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.who input.need{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 30%,transparent)}
+.btn.armed{background:var(--danger);border-color:var(--danger);color:#fff}
+@media (max-width: 600px){ .hlist>li{grid-template-columns:1fr;gap:4px} .hv{grid-auto-flow:column;justify-content:start;align-items:baseline;gap:8px} .sugg .f2{grid-template-columns:1fr} }
 /* fenêtres */
 .modal{position:fixed;inset:0;background:rgba(10,14,16,.45);display:grid;place-items:center;padding:16px;z-index:50}
 .sheet{background:var(--surface);color:var(--fg);border-radius:14px;max-width:760px;width:100%;max-height:calc(100% - 32px);overflow:auto;padding:16px 18px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);box-sizing:border-box}
@@ -303,6 +333,7 @@ textarea.share{width:100%;box-sizing:border-box;min-height:150px;font-family:var
 .smsg{font-size:13px;color:var(--muted)}
 kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--surface)}
 
+@media (max-width: 1560px){ .tools .lab{display:none} .bt small{max-width:210px} }
 @media (max-width: 1440px){ .runstate{display:none} .who{font-size:0;gap:0} .who input{font-size:14px} }
 @media (max-width: 1180px){
   .main{grid-template-columns:minmax(0,1fr) 10px var(--progw,460px)}
@@ -349,6 +380,9 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
     <div class="tools">
       <button class="btn" id="btnPalette">+ Composants</button>
       <button class="btn" id="btnDefis">Défis</button>
+      <button class="btn icon" id="btnUndo" title="Annuler (Ctrl+Z)">↶<span class="lab">Annuler</span></button>
+      <button class="btn icon" id="btnClear" title="Retirer tous les fils et les composants ajoutés">✕<span class="lab">Vider</span></button>
+      <button class="btn icon" id="btnShot" title="Capture du travail (pour Classroom)">📷<span class="lab">Capture</span></button>
       <button class="btn" id="btnShare">Partager</button>
       <button class="btn" id="btnCorr" hidden>Correction</button>
       <button class="btn" id="btnProf">Mode prof</button>
@@ -368,7 +402,6 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
       <div class="card banner" id="banner" hidden></div>
       <div class="card props" id="props" hidden></div>
       <div class="card warns" id="warns" hidden></div>
-      <div class="card hint" id="hint" hidden></div>
       <div class="card zoomer">
         <button id="zIn" title="Zoomer">+</button><button id="zOut" title="Dézoomer">−</button><button id="zFit" title="Tout voir">⤢</button>
         <button id="wColor" class="wc" title="Couleur des prochains fils (auto : rouge pour le 5 V, noir pour GND)"><i id="wColorI"></i></button>
@@ -400,6 +433,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
   </main>
 </div>
 
+<div class="card hint" id="hint" role="status" hidden></div>
 <div class="modal" id="mDefis" hidden>
   <div class="sheet" role="dialog" aria-labelledby="mDefisT">
     <div class="top"><div><h2 id="mDefisT">Défis</h2><p class="prog-sum" id="progSum"></p></div><button class="btn" data-close>Fermer</button></div>
@@ -438,9 +472,21 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
     <div class="twrap"><table class="corr"><thead><tr><th>Élève</th><th>Défi</th><th>Annoncé</th><th>Essais</th><th>Vérification ici</th><th></th></tr></thead><tbody id="corrBody"><tr><td colspan="6" class="empty">Aucun projet chargé pour l’instant.</td></tr></tbody></table></div>
   </div>
 </div>
+<div class="modal" id="mShot" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="mShotT" style="max-width:780px">
+    <div class="top"><h2 id="mShotT">Capture</h2><button class="btn" data-close>Fermer</button></div>
+    <p class="shotnote">L’image reprend ton nom, la date, le défi, le résultat de la vérification, tout le montage (même la partie hors de l’écran) et ton programme.</p>
+    <div class="shotprev"><img id="shotImg" alt="Aperçu de la capture"></div>
+    <div class="shotacts"><button class="btn primary" id="shotCopy">Copier l’image</button><button class="btn" id="shotShare" hidden>Partager…</button><button class="btn" id="shotDl">Enregistrer l’image</button></div>
+    <p class="shotnote">Pour un devoir Classroom : « Ajouter ou créer » › « Fichier », puis choisis l’image enregistrée. L’image copiée se colle (Ctrl+V) dans un Google Docs ou Slides. Sur smartphone, « Partager » propose directement Classroom.</p>
+    <p class="shotnote">Fichier : <span id="shotName"></span></p>
+  </div>
+</div>
 <div class="modal" id="mHelp" hidden>
   <div class="sheet" role="dialog" aria-labelledby="mHelpT">
-    <div class="top"><h2 id="mHelpT">Comment ça marche ?</h2><button class="btn" data-close>Fermer</button></div>
+    <div class="top"><h2 id="mHelpT">Aide</h2><button class="btn" data-close>Fermer</button></div>
+    <div class="ftabs" role="tablist"><button class="ftab on" role="tab" data-htab="use">Mode d’emploi</button><button class="ftab" role="tab" data-htab="hist">Historique des versions</button></div>
+    <div data-hpane="use">
     <h3>1. Câbler</h3>
     <ul>
       <li>Clique sur un composant à gauche pour le poser, ou fais-le glisser sur le plan.</li>
@@ -462,7 +508,16 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
       <li>Pendant la simulation, survole une borne pour mesurer sa tension, ou sélectionne une LED pour voir son courant : c’est ton multimètre.</li>
       <li>Une LED sans résistance grille, une entrée « en l’air » donne des valeurs au hasard, un court-circuit coupe l’alimentation : comme en vrai.</li>
       <li><b>Vérifier le défi</b> teste automatiquement ton montage et ton programme.</li>
+      <li>Version élève : ton nom et ton prénom doivent être indiqués en haut pour téléverser ou vérifier un défi.</li>
     </ul>
+    <h3>4. Rendre son travail</h3>
+    <ul>
+      <li><b>Capture (📷)</b> : crée une image avec ton nom, la date, le défi, le résultat de la vérification, tout le montage et ton programme. Copie-la ou enregistre-la pour Classroom.</li>
+      <li><b>Partager</b> : le code Arduino pour une vraie carte, ou le fichier du projet (.json) que le prof peut revérifier.</li>
+      <li>Le travail, le nom et les essais sont effacés quand on ferme l’application : l’élève suivant repart de zéro. Recharger la page ne fait rien perdre.</li>
+    </ul>
+    <h3>Raccourcis clavier</h3>
+    <p>Espace téléverser ou arrêter · Ctrl+Z annuler · R pivoter · Suppr effacer · Échap annuler le fil · molette zoom.</p>
     <h3>Instructions disponibles en code C</h3>
     <p style="font-family:var(--font-mono);font-size:12.5px;line-height:1.6">pinMode · digitalWrite · digitalRead · analogRead · analogWrite · delay · millis · tone · noTone · map · constrain · random · Serial.begin · Serial.print · Serial.println · Servo (attach, write) · if / else · for · while · do…while · switch · fonctions · tableaux · #define</p>
     <h3>À propos</h3>
@@ -471,7 +526,24 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
       <p style="margin:0;flex:1;min-width:200px">Le Labo Arduino a été créé par <strong>Lesenfants Olivier</strong>, enseignant à l’Institut Saint-Roch de Marche-en-Famenne, avec l’aide de Claude, l’assistant IA d’Anthropic.</p>
     </div>
     <p class="copy"><b>© 2026 Olivier Lesenfants. Tous droits réservés.</b><br>Labo Arduino est un logiciel propriétaire : il n’est pas open source. Toute copie, modification, diffusion ou revente du code, des défis, des solutions ou des visuels est interdite sans l’autorisation écrite de l’auteur.</p>
-    <p class="prog-sum">Version <span id="appVer"></span> · Ton travail est enregistré dans ce navigateur, sur cet appareil.</p>
+    </div>
+    <div data-hpane="hist" hidden>
+      <div class="hsum">
+        <h3 style="margin-top:4px">Le Labo Arduino en bref</h3>
+        <p>Un simulateur d’électronique et d’Arduino pensé pour la classe, utilisable sur Chromebook, PC ou smartphone, même hors ligne. L’élève câble ses composants sur la carte ou sur une breadboard, programme en blocs ou en code C, puis téléverse : les LED s’allument, le servomoteur tourne, le buzzer sonne, et une LED sans résistance grille comme en vrai.</p>
+        <p>Treize défis sur quatre niveaux, vérifiés automatiquement ; le mode prof donne accès aux solutions et à la correction des projets rendus.</p>
+      </div>
+      <ul class="hlist" id="histList"></ul>
+    </div>
+    <div class="hfoot">
+      <div class="row1"><span class="ver">Version <span id="appVer"></span></span><button class="btn" id="suggBtn" aria-expanded="false">✉ Proposer une amélioration</button></div>
+      <form class="sugg" id="suggForm" hidden>
+        <div class="f2"><input id="suggNom" placeholder="Ton nom (facultatif)" autocomplete="name" aria-label="Ton nom"><select id="suggType" aria-label="Type de demande"><option>Amélioration</option><option>Nouveau défi</option><option>Nouveau composant</option><option>Problème / bug</option><option>Autre</option></select></div>
+        <textarea id="suggTxt" placeholder="Décris ta demande : ce que tu voudrais, dans quel défi ou quel composant…" aria-label="Ta demande"></textarea>
+        <div class="acts"><button class="btn primary" type="button" id="suggGmail">Envoyer avec Gmail</button><button class="btn" type="button" id="suggMail">Autre messagerie</button><button class="btn ghost" type="button" id="suggCopy">Copier le texte</button></div>
+        <small>Le message est préparé pour <b>olivier.lesenfants@elmarche.be</b>. Il ne part qu’après avoir appuyé sur « Envoyer » dans ta messagerie. Si rien ne s’ouvre, copie le texte et colle-le dans un mail.</small>
+      </form>
+    </div>
   </div>
 </div>
 <script>
@@ -2094,17 +2166,22 @@ const DEFIS = [
 /* =====================================================================
    APPLICATION — état, exécution, défis, sauvegarde, interface
    ===================================================================== */
-const APP_VERSION = '1.2';
+const APP_VERSION = '1.3';
 const $ = s => document.querySelector(s);
 const STORE = 'labo-arduino-v1', NAMEKEY = 'labo-arduino-nom', SNDKEY = 'labo-arduino-son', WKEY = 'labo-arduino-largeur';
 const CODE_TEMPLATE = 'void setup() {\n  // s’exécute une seule fois, au démarrage\n\n}\n\nvoid loop() {\n  // se répète sans fin\n\n}\n';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const lsGet = (k, d) => { try{ const v = localStorage.getItem(k); return v === null ? d : v; }catch(e){ return d; } };
 const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
+/* travail de session : effacé quand l'application (onglet ou fenêtre) est fermée, pour que l'élève suivant reparte de zéro */
+const WS = (() => { try{ const s = window.sessionStorage; s.setItem('labo-t', '1'); s.removeItem('labo-t'); return s; }catch(e){ return null; } })();
+const wsGet = (k, d) => { try{ const v = WS ? WS.getItem(k) : null; return v === null ? d : v; }catch(e){ return d; } };
+const wsSet = (k, v) => { try{ if(WS) WS.setItem(k, v); }catch(e){} };
+try{ [STORE, NAMEKEY].forEach(k => localStorage.removeItem(k)); }catch(e){}
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let ST = {cur:'n1-blink', work:{}, done:{}, tries:{}};
-try{ const raw = lsGet(STORE, null); if(raw){ const o = JSON.parse(raw); if(o && typeof o === 'object') ST = Object.assign(ST, o); } }catch(e){}
+try{ const raw = wsGet(STORE, null); if(raw){ const o = JSON.parse(raw); if(o && typeof o === 'object') ST = Object.assign(ST, o); } }catch(e){}
 const defiById = id => DEFIS.find(d => d.id === id) || null;
 let D = defiById(ST.cur);           // défi courant (null = montage libre)
 let circ, progS;                    // circuit et programme courants
@@ -2126,7 +2203,7 @@ function loadWork(){
 }
 let saveT = null;
 let SANDBOX = false;
-function save(){ if(SANDBOX) return; clearTimeout(saveT); saveT = setTimeout(() => { ST.work[D ? D.id : 'libre'] = {circ, prog:progS}; ST.cur = D ? D.id : 'libre'; lsSet(STORE, JSON.stringify(ST)); }, 300); }
+function save(){ if(SANDBOX) return; clearTimeout(saveT); saveT = setTimeout(() => { ST.work[D ? D.id : 'libre'] = {circ, prog:progS}; ST.cur = D ? D.id : 'libre'; wsSet(STORE, JSON.stringify(ST)); commit(); }, 300); }
 
 /* ---------------- simulation ---------------- */
 const SIM = {running:false, rt:null, api:null, nets:null, R:null, dirty:true, mem:null, inputs:{press:{}, motionUntil:{}}, warns:new Map(), servoAng:{}, txUntil:0, serialAll:'', serialMark:0, gen:0, stopWhy:'', testing:false};
@@ -2237,6 +2314,37 @@ function ensureAudio(){ if(AC || !soundOn) return; try{ AC = new (window.AudioCo
 function setTone(f){ if(!AC) return; const t = AC.currentTime; if(f && soundOn){ OSC.frequency.setTargetAtTime(f, t, .005); GAIN.gain.setTargetAtTime(.035, t, .01); } else GAIN.gain.setTargetAtTime(0, t, .01); }
 function renderSound(){ $('#soundLab').textContent = soundOn ? 'Son' : 'Muet'; $('#btnSound').setAttribute('aria-pressed', soundOn); $('#btnSound').style.opacity = soundOn ? 1 : .6; }
 
+/* ---------------- annuler ---------------- */
+let HIST_U = [], lastCirc = null, lastPush = 0;
+function resetHist(){ HIST_U = []; lastCirc = circ ? JSON.stringify(circ) : null; renderUndo(); }
+function commit(){
+  if(SANDBOX || !circ) return; const s = JSON.stringify(circ);
+  if(lastCirc === null){ lastCirc = s; return; }
+  if(s === lastCirc) return;
+  const now = performance.now();
+  if(now - lastPush > 600 || !HIST_U.length){ HIST_U.push(lastCirc); if(HIST_U.length > 60) HIST_U.shift(); }
+  lastPush = now; lastCirc = s; renderUndo();
+}
+function undo(){
+  if(SIM.running){ toast('Arrête la simulation pour modifier le montage.'); return; }
+  clearTimeout(saveT); commit();
+  const prev = HIST_U.pop(); if(!prev){ toast('Rien à annuler.'); return; }
+  const o = JSON.parse(prev); circ.comps = o.comps; circ.wires = o.wires; circ.next = o.next;
+  lastCirc = prev; feedback = null; setCirc(); renderCons(); renderUndo();
+  clearTimeout(saveT); ST.work[D ? D.id : 'libre'] = {circ, prog:progS}; wsSet(STORE, JSON.stringify(ST));
+}
+function renderUndo(){ const b = $('#btnUndo'); if(b) b.disabled = !HIST_U.length; }
+let clearArmed = 0;
+function clearAll(){
+  const b = $('#btnClear'), lab = b.querySelector('.lab');
+  if(SIM.running){ toast('Arrête la simulation pour modifier le montage.'); return; }
+  if(Date.now() - clearArmed > 3000){ clearArmed = Date.now(); b.classList.add('armed'); if(lab) lab.textContent = 'Confirmer ?'; toast('Clique encore sur ✕ pour retirer tous les fils' + (D ? ' et les composants ajoutés.' : ' et les composants.'));
+    setTimeout(() => { b.classList.remove('armed'); if(lab) lab.textContent = 'Vider'; }, 3000); return; }
+  clearArmed = 0; b.classList.remove('armed'); if(lab) lab.textContent = 'Vider';
+  circ.wires = []; circ.comps = circ.comps.filter(c => c.type === 'uno' || c.locked);
+  feedback = null; board.select(null); setCirc(); renderCons(); save();
+}
+
 /* ---------------- plan de câblage ---------------- */
 const board = Board($('#board'), {
   onChange(kind){ save(); if(kind !== 'param') renderProps(); if(feedback && kind !== 'move'){ feedback = null; renderCons(); } },
@@ -2247,7 +2355,7 @@ const board = Board($('#board'), {
   reset(){ start(); },
   hint: toast,
 });
-function setCirc(){ board.circ = circ; board.sel = null; board.render(); renderProps(); }
+function setCirc(){ if(lastCirc === null && circ) lastCirc = JSON.stringify(circ); board.circ = circ; board.sel = null; board.render(); renderProps(); }
 
 function toast(msg){ const h = $('#hint'); h.textContent = msg; h.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => h.hidden = true, 3200); }
 function showBanner(msg){ const b = $('#banner'); b.innerHTML = '<span>⚡ ' + escH(msg) + '</span><button class="btn" id="bannerX">OK</button>'; b.hidden = false; $('#bannerX').onclick = hideBanner; }
@@ -2438,7 +2546,7 @@ function renderCons(){
   $('#cVerify').onclick = verify;
   if($('#cHint')) $('#cHint').onclick = () => { hintLevel++; renderCons(); };
   $('#cRestart').onclick = () => { if(!restartConfirm){ restartConfirm = true; renderCons(); setTimeout(() => { if(restartConfirm){ restartConfirm = false; renderCons(); } }, 4000); return; }
-    restartConfirm = false; stop(); delete ST.work[D.id]; loadWork(); feedback = null; hintLevel = 0; applyWork(); };
+    restartConfirm = false; stop(); delete ST.work[D.id]; loadWork(); feedback = null; hintLevel = 0; applyWork(); resetHist(); };
   if($('#cNext')) $('#cNext').onclick = () => goDefi(DEFIS[DEFIS.indexOf(D) + 1].id);
   if($('#cReset')) $('#cReset').onclick = () => { delete ST.tries[D.id]; delete ST.done[D.id]; save(); renderCons(); };
   const solBtn = (id, kind) => { const el = $(id); if(!el) return; el.onclick = () => {
@@ -2494,9 +2602,16 @@ const TAPI = {
   },
 };
 let verifying = false;
+function needName(what){
+  if(EDITION !== 'eleve' || /\S\S+\s+\S\S+/.test(studentName())) return false;
+  toast(`Indique d’abord ton nom et ton prénom en haut (ex. : Dupont Léa) pour ${what}.`);
+  const i = $('#eleveNom'); if(i){ i.classList.add('need'); try{ i.focus(); }catch(e){} setTimeout(() => i.classList.remove('need'), 3000); }
+  return true;
+}
 async function verify(opts){
   opts = opts || {};
   if(!D || verifying) return;
+  if(!opts.sandbox && needName('vérifier le défi')) return;
   verifying = true; if(!opts.sandbox){ ST.tries[D.id] = (ST.tries[D.id] || 0) + 1; save(); }
   feedback = {cls:'wait', msg:'Vérification en cours : le programme tourne et le testeur manipule ton montage…'}; consMini = false; renderCons();
   const t0 = performance.now(); const bar = setInterval(() => { const b = $('#cBar'); if(b) b.style.width = Math.min(100, (performance.now() - t0) / D.dur * 100) + '%'; }, 120);
@@ -2508,10 +2623,10 @@ async function verify(opts){
     if(!ok) throw Object.assign(new Error('Ton programme contient une erreur (voir sous le programme) : corrige-la, puis vérifie à nouveau.'), {tf:true});
     await TAPI.wait(250);
     const msg = await D.test(TAPI);
-    res = {cls:'ok', msg};
+    res = {cls:'ok', msg, when: new Date().toLocaleString('fr-BE', {day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})};
     if(!opts.sandbox) ST.done[D.id] = {when:new Date().toLocaleDateString('fr-BE'), tries:ST.tries[D.id]};
   } catch(e){
-    res = {cls:'ko', msg: e.tf ? e.message : 'Erreur du testeur : ' + (e.message || e)};
+    res = {cls:'ko', msg: e.tf ? e.message : 'Erreur du testeur : ' + (e.message || e), when: new Date().toLocaleString('fr-BE', {day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})};
     const bw = [...SIM.warns.entries()].find(([k]) => k.startsWith('burn') || k.startsWith('pinI'));
     if(bw && !res.msg.includes(bw[1]) && !(bw[0].startsWith('burn') && res.msg.includes('grillé'))) res.msg += ' ⚠ ' + bw[1];
   } finally {
@@ -2537,7 +2652,7 @@ $('#defList').addEventListener('click', e => { const b = e.target.closest('[data
 function goDefi(id){
   stop(); save(); clearTimeout(saveT); ST.work[D ? D.id : 'libre'] = {circ, prog:progS};
   D = defiById(id); ST.cur = D ? D.id : 'libre'; hintLevel = 0; feedback = null; consInit();
-  loadWork(); applyWork(); lsSet(STORE, JSON.stringify(ST));
+  loadWork(); applyWork(); wsSet(STORE, JSON.stringify(ST)); resetHist();
 }
 function consInit(){ const w = $('#stage').getBoundingClientRect().width || window.innerWidth; consMini = w < 520; consDet = w >= 760; }
 function applyWork(){
@@ -2556,7 +2671,7 @@ function fitBoard(){
 async function saveFile(name, text){
   try{ if(window.claude && typeof window.claude.use === 'function'){ const dl = await window.claude.use('downloads'); if(dl){ await dl.save({filename:name.replace(/\.ino$/, '.txt'), data:text}); return 'ok'; } return 'none'; } }
   catch(e){ return e && e.code === 'declined' ? 'declined' : 'none'; }
-  try{ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); return 'ok'; }catch(e){ return 'none'; }
+  try{ const a = document.createElement('a'); a.href = URL.createObjectURL(text instanceof Blob ? text : new Blob([text], {type:'text/plain'})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); return 'ok'; }catch(e){ return 'none'; }
 }
 async function copyText(text, ta, msgEl){
   try{ await navigator.clipboard.writeText(text); msgEl.textContent = 'Copié dans le presse-papiers.'; }
@@ -2576,7 +2691,7 @@ function loadProject(text){
   let o; try{ o = JSON.parse(text); }catch(e){ $('#shMsg2').textContent = 'Ce texte n’est pas un projet Labo Arduino valide.'; return; }
   if(!o || o.app !== 'labo-arduino' || !o.circ || !o.prog){ $('#shMsg2').textContent = 'Ce fichier n’est pas un projet Labo Arduino.'; return; }
   stop(); const id = o.defi && defiById(o.defi) ? o.defi : 'libre';
-  ST.work[id] = {circ:o.circ, prog:o.prog}; D = defiById(id); ST.cur = id; hintLevel = 0; feedback = null; loadWork(); applyWork(); save();
+  ST.work[id] = {circ:o.circ, prog:o.prog}; D = defiById(id); ST.cur = id; hintLevel = 0; feedback = null; loadWork(); applyWork(); save(); resetHist();
   $('#mShare').hidden = true; toast('Projet chargé' + (o.eleve ? ' : ' + o.eleve : '') + (o.reussi ? ' (défi réussi le ' + o.reussi + ')' : '') + '.');
 }
 
@@ -2618,7 +2733,7 @@ function loadSolution(kind){
   stop();
   const w = freshWork(D); w.circ.wires = s.w.map((x, i) => ({id:'s' + i, a:x[0], b:x[1], color:'auto'})); w.circ.next = s.w.length + 1;
   w.prog.code = s.code; if(s.blocks) w.prog.blocks = clone(s.blocks); w.prog.mode = kind === 'blocks' && s.blocks ? 'blocks' : 'code';
-  circ = w.circ; progS = w.prog; feedback = null; applyWork(); save();
+  circ = w.circ; progS = w.prog; feedback = null; applyWork(); save(); resetHist();
   toast('Solution chargée (' + (progS.mode === 'blocks' ? 'blocs' : 'code C') + ') : téléverse ou vérifie pour la montrer.');
 }
 /* correction des projets rendus */
@@ -2649,7 +2764,7 @@ async function corrVerify(idxs){
       r.res = await verify({sandbox:true}) || {cls:'ko', msg:'Vérification impossible.'}; renderCorr();
     }
   } finally {
-    SANDBOX = false; D = keep.D; circ = keep.circ; progS = keep.progS; feedback = keep.feedback; applyWork();
+    SANDBOX = false; D = keep.D; circ = keep.circ; progS = keep.progS; feedback = keep.feedback; applyWork(); lastCirc = JSON.stringify(circ);
     corrBusy = false; $('#corrMsg').textContent = ''; renderCorr();
   }
 }
@@ -2668,9 +2783,228 @@ $('#corrBody').addEventListener('click', e => {
   if(o && !corrBusy){ $('#mCorr').hidden = true; loadProject(JSON.stringify(CORR[+o.dataset.co].o)); }
 });
 
+
+/* ---------------- aide : historique et suggestions ---------------- */
+const HIST = [
+  {v:'1.3', d:'15 octobre 2026', t:'Capture et outils du Banc de câblage', l:['Bouton Capture (📷) : une image du travail avec le nom de l’élève, la date, le défi, le résultat de la vérification, le nombre d’essais, tout le montage et le programme, à copier, enregistrer ou partager vers Classroom. Rendue en haute résolution.', 'Version élève : le nom et le prénom doivent être indiqués pour téléverser ou vérifier un défi.', 'Le travail, le nom et les essais sont effacés quand on ferme l’application : l’élève suivant repart de zéro. Recharger la page ne fait rien perdre.', 'Annuler (Ctrl+Z) et Vider le montage ; la barre d’espace téléverse ou arrête le programme.', 'L’aide s’ouvre sur deux onglets (mode d’emploi et historique des versions) ; bouton « Proposer une amélioration ».']},
+  {v:'1.2', d:'14 octobre 2026', t:'Application installable', l:['Mise en ligne sur GitHub Pages : l’application s’installe sur Chromebook, Android, PC ou iPhone et fonctionne hors connexion.', 'Mention « © 2026 Olivier Lesenfants. Tous droits réservés. » dans « À propos » : Labo Arduino est un logiciel propriétaire, non open source.']},
+  {v:'1.1', d:'9 octobre 2026', t:'Breadboard et mode prof', l:['Plaque d’essai (breadboard) de 30 colonnes : les pattes des composants s’enfoncent dans les trous, les colonnes et les rails sont reliés comme sur une vraie plaque.', 'Mode prof protégé par mot de passe : solutions de tous les défis en blocs et en code C, indices affichés, correction des projets rendus par les élèves (revérifiés automatiquement).']},
+  {v:'1.0', d:'9 octobre 2026', t:'Première version', l:['Arduino Uno, LED, LED RVB, résistances, bouton, interrupteur, potentiomètre, LDR, TMP36, buzzer, servomoteur, détecteur PIR, relais et barrette.', 'Simulation électrique réelle : LED grillée sans résistance, entrée flottante, court-circuit, multimètre au survol.', 'Programmation en blocs ou en code C, moniteur série, treize défis sur quatre niveaux vérifiés automatiquement.']},
+];
+$('#histList').innerHTML = HIST.map(h => `<li><div class="hv"><b>${escH(h.v)}</b><span>${escH(h.d)}</span></div><div><h4>${escH(h.t)}</h4><ul>${h.l.map(x => `<li>${escH(x)}</li>`).join('')}</ul></div></li>`).join('');
+document.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-htab]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-hpane]').forEach(p => { p.hidden = p.dataset.hpane !== b.dataset.htab; });
+  $('#mHelp .sheet').scrollTop = 0;
+});
+const SUGG_TO = 'olivier.lesenfants@elmarche.be';
+$('#suggBtn').onclick = () => {
+  const f = $('#suggForm'); f.hidden = !f.hidden; $('#suggBtn').setAttribute('aria-expanded', String(!f.hidden));
+  if(!f.hidden){ if(!$('#suggNom').value) $('#suggNom').value = studentName(); $('#suggTxt').focus(); }
+};
+function suggMsg(){
+  const txt = $('#suggTxt').value.trim();
+  if(!txt){ toast('Écris d’abord ta demande dans le cadre.'); $('#suggTxt').focus(); return null; }
+  const nom = $('#suggNom').value.trim(), type = $('#suggType').value;
+  const su = `[Labo Arduino] ${type}${nom ? ' – ' + nom : ''}`;
+  const body = `${txt}\n\n—\nDe : ${nom || 'non indiqué'}\nType : ${type}\nVersion : ${APP_VERSION}\nDéfi ouvert : ${D ? D.t : 'montage libre'}\nDate : ${new Date().toLocaleDateString('fr-BE')}`;
+  return {su, body};
+}
+$('#suggGmail').onclick = () => { const m = suggMsg(); if(!m) return;
+  const a = document.createElement('a'); a.href = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(SUGG_TO)}&su=${encodeURIComponent(m.su)}&body=${encodeURIComponent(m.body)}`; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
+$('#suggMail').onclick = () => { const m = suggMsg(); if(!m) return;
+  const a = document.createElement('a'); a.href = `mailto:${SUGG_TO}?subject=${encodeURIComponent(m.su)}&body=${encodeURIComponent(m.body)}`; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
+$('#suggCopy').onclick = async () => { const m = suggMsg(); if(!m) return;
+  const t = `À : ${SUGG_TO}\nObjet : ${m.su}\n\n${m.body}`;
+  try{ await navigator.clipboard.writeText(t); toast('Texte copié. Colle-le dans un mail à ' + SUGG_TO + '.'); }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); toast('Texte copié. Colle-le dans un mail à ' + SUGG_TO + '.'); }catch(e2){ toast('Copie impossible : sélectionne le texte à la main.'); } ta.remove(); } };
+
+/* ---------------- capture ---------------- */
+const SHOT_PROPS = ['fill','fill-opacity','fill-rule','stroke','stroke-width','stroke-opacity','stroke-dasharray','stroke-dashoffset','stroke-linecap','stroke-linejoin','stroke-miterlimit','opacity','font-family','font-size','font-weight','font-style','text-anchor','dominant-baseline','letter-spacing','paint-order','filter'];
+function shotInline(orig){
+  const cl = orig.cloneNode(true), a = [orig, ...orig.querySelectorAll('*')], b = [cl, ...cl.querySelectorAll('*')];
+  a.forEach((el, i) => {
+    const t = b[i]; if(!t || !(el instanceof SVGElement)) return;
+    const cs = getComputedStyle(el); let st = '';
+    for(const p of SHOT_PROPS){ const v = cs.getPropertyValue(p); if(v && !(p === 'filter' && v === 'none')) st += `${p}:${v};`; }
+    if(cs.display === 'none') st += 'display:none;';
+    if(cs.visibility === 'hidden') st += 'visibility:hidden;';
+    t.setAttribute('style', st);
+  });
+  return cl;
+}
+/* boîte englobante du montage, en coordonnées du plan (tout le montage, même hors de l'écran) */
+function shotBox(svg){
+  const m = svg.getScreenCTM(); if(!m) return null; const inv = m.inverse(); const pt = svg.createSVGPoint();
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  svg.querySelectorAll('.comp, .wg, .lbl').forEach(el => {
+    const r = el.getBoundingClientRect(); if(!r.width && !r.height) return;
+    for(const [x, y] of [[r.left, r.top], [r.right, r.bottom]]){ pt.x = x; pt.y = y; const q = pt.matrixTransform(inv); x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+  });
+  return x0 > x1 ? null : {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
+}
+function shotImg(str){
+  return new Promise((res, rej) => { const url = URL.createObjectURL(new Blob([str], {type:'image/svg+xml'})); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); res(im); }; im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('svg')); }; im.src = url; });
+}
+function shotWrap(ctx, text, maxW){
+  const out = []; String(text).split('\n').forEach(par => { let line = ''; par.split(' ').forEach(w => { const t = line ? line + ' ' + w : w; if(ctx.measureText(t).width > maxW && line){ out.push(line); line = w; } else line = t; }); out.push(line); });
+  return out;
+}
+/* coloration du code C, ligne par ligne : [[texte, rôle], …] */
+function shotTokens(line){
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|\b(void|int|float|long|unsigned|bool|boolean|byte|char|String|if|else|for|while|do|return|const|switch|case|break|default|true|false|HIGH|LOW|OUTPUT|INPUT|INPUT_PULLUP|Servo)\b|(#\w+)|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_]\w*)(?=\s*\()/g;
+  const out = []; let last = 0, m;
+  while((m = re.exec(line))){ if(m.index > last) out.push([line.slice(last, m.index), 'fg']);
+    out.push([m[0], m[1] ? 'com' : m[2] ? 'str' : m[3] || m[4] ? 'kw' : m[5] ? 'num' : 'fn']); last = m.index + m[0].length; }
+  if(last < line.length) out.push([line.slice(last), 'fg']);
+  return out;
+}
+let shotURL = null, shotBlob = null, shotName = 'capture.png';
+const SHOT_RES = 3;
+async function makeShot(){
+  try{ await document.fonts.ready; }catch(e){}
+  const root = document.documentElement, oldTheme = root.getAttribute('data-theme');
+  const oldSel = board.sel; if(oldSel){ board.sel = null; board.render(); board.paint(SIM.running ? SIM.R : null); }
+  root.setAttribute('data-theme', 'light');
+  const rs = getComputedStyle(root), cv = n => rs.getPropertyValue(n).trim();
+  const col = {ink: cv('--ink') || '#1c232b', muted: cv('--muted') || '#56625f', paper: '#ffffff', line: cv('--line') || '#bcc5c1', accent: cv('--accent') || '#00757e', ok: cv('--ok') || '#2b7a37', danger: cv('--danger') || '#c0282b',
+    kw: '#7a3fb0', fn: '#00757e', num: '#b4560c', str: '#2b7a37', com: '#8a948f', codeBg: '#f6f8f6', serBg: '#101518', serFg: '#cfe9d4',
+    body: cv('--font-body') || 'sans-serif', disp: cv('--font-display') || 'sans-serif', mono: cv('--font-mono') || 'monospace'};
+  let circPart = null;
+  try{
+    const svg = $('#board'); const box = shotBox(svg);
+    if(box){
+      const cl = shotInline(svg);
+      cl.querySelectorAll('.bg, .pinhit, #rubber, #tip, #bbhl, .selbox, .whit').forEach(e => e.remove());
+      const m = 24; cl.removeAttribute('id'); cl.removeAttribute('class'); cl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      cl.setAttribute('viewBox', `${box.x - m} ${box.y - m} ${box.w + 2 * m} ${box.h + 2 * m}`);
+      circPart = {cl, w: box.w + 2 * m, h: box.h + 2 * m};
+    }
+  } finally {
+    if(oldTheme === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', oldTheme);
+    if(oldSel){ board.sel = oldSel; board.render(); board.paint(SIM.running ? SIM.R : null); }
+  }
+  // ---- composition (unités logiques ; l'image finale est rendue K fois plus fine) ----
+  const name = (EDITION === 'eleve' ? studentName() : '') || '', now = new Date();
+  const W = 1200;
+  const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
+  const info = [];
+  if(D){
+    const L = LEVELS[D.lv - 1], lvDefs = DEFIS.filter(x => x.lv === D.lv);
+    info.push({t: `DÉFI ${D.lv}.${lvDefs.indexOf(D) + 1} · NIVEAU ${D.lv} · ${L.nom.toUpperCase()}`, f: `600 16px ${col.disp}`, c: col.accent, sp: 2});
+    info.push({t: D.t, f: `700 30px ${col.disp}`, c: col.ink, sp: 4});
+    info.push({t: D.obj, f: `500 17px ${col.body}`, c: col.ink, sp: 8});
+    if(feedback && feedback.cls !== 'wait') info.push({t: (feedback.cls === 'ok' ? '✓ ' : '✗ ') + feedback.msg + (feedback.when ? ` (vérifié le ${feedback.when})` : ''), f: `600 17px ${col.body}`, c: feedback.cls === 'ok' ? col.ok : col.danger, sp: 4});
+    else info.push({t: 'Pas encore vérifié.', f: `600 17px ${col.body}`, c: col.muted, sp: 4});
+    const done = ST.done[D.id];
+    info.push({t: `Essais : ${ST.tries[D.id] || 0}${done ? ' · défi réussi le ' + done.when : ''}`, f: `500 16px ${col.body}`, c: col.muted, sp: 4});
+  } else info.push({t: 'Montage libre', f: `700 30px ${col.disp}`, c: col.ink, sp: 6});
+  info.push({t: `Carte : ${SIM.running ? 'programme en cours d’exécution' : 'éteinte'} · programme écrit en ${progS.mode === 'code' ? 'code C' : 'blocs'}`, f: `500 16px ${col.body}`, c: col.muted, sp: 0});
+  const lay = info.map(l => { ctx.font = l.f; const lh = parseInt(l.f.split(' ')[1]) * 1.35; const lines = shotWrap(ctx, l.t, W - 80); return {...l, lines, lh, h: lines.length * lh + l.sp}; });
+  const HEAD = 96, infoH = lay.reduce((a, l) => a + l.h, 0) + 28;
+  // montage
+  let cw = 0, ch = 0; if(circPart){ const k = Math.min((W - 80) / circPart.w, 1.6, 900 / circPart.h); cw = Math.round(circPart.w * k); ch = Math.round(circPart.h * k); }
+  // programme
+  const src = currentSource().replace(/\t/g, '  ').split('\n'); while(src.length && !src[src.length - 1].trim()) src.pop();
+  const codeLines = src.slice(0, 220); if(src.length > 220) codeLines.push('// … (' + (src.length - 220) + ' lignes de plus)');
+  ctx.font = `500 14px ${col.mono}`; const charW = ctx.measureText('M').width, CLH = 21;
+  const maxChars = Math.floor((W - 80 - 60) / charW);
+  const wrapped = []; codeLines.forEach((l, i) => { let s = l; let first = true; do { wrapped.push({n: first ? i + 1 : '', s: s.slice(0, maxChars)}); s = s.slice(maxChars); first = false; } while(s.length); });
+  const codeH = wrapped.length * CLH + 24;
+  // moniteur série et erreur
+  const serial = SIM.serialAll.replace(/\r/g, '').split('\n'); while(serial.length && !serial[serial.length - 1]) serial.pop();
+  const serLines = serial.slice(-14);
+  const perr = $('#perr').hidden ? '' : $('#perr').textContent;
+  ctx.font = `600 16px ${col.body}`; const errLines = perr ? shotWrap(ctx, '✗ ' + perr, W - 80) : [];
+  const warnList = [...SIM.warns.values()].slice(-4); ctx.font = `500 15px ${col.body}`;
+  const warnLines = warnList.flatMap(w => shotWrap(ctx, '⚠ ' + w, W - 80));
+  const titleH = 40;
+  const H = HEAD + infoH + (circPart ? titleH + ch + 24 : 0) + (warnLines.length ? warnLines.length * 21 + 16 : 0) + titleH + codeH + 24 + (errLines.length ? errLines.length * 23 + 12 : 0) + (serLines.length ? titleH + serLines.length * 19 + 24 + 24 : 0) + 44;
+  // résolution : SHOT_RES pixels par unité, limitée à ~16 Mpx (limite des navigateurs mobiles)
+  const K = Math.max(1, Math.min(SHOT_RES, Math.sqrt(16e6 / (W * H)), 16000 / W, 16000 / H));
+  let circImg = null;
+  if(circPart){ circPart.cl.setAttribute('width', Math.round(cw * K)); circPart.cl.setAttribute('height', Math.round(ch * K)); circImg = await shotImg(new XMLSerializer().serializeToString(circPart.cl)); }
+  cvs.width = Math.round(W * K); cvs.height = Math.round(H * K);
+  ctx.setTransform(K, 0, 0, K, 0, 0); ctx.imageSmoothingEnabled = true; try{ ctx.imageSmoothingQuality = 'high'; }catch(e){}
+  ctx.fillStyle = col.paper; ctx.fillRect(0, 0, W, H);
+  // en-tête
+  ctx.fillStyle = '#eef3f1'; ctx.fillRect(0, 0, W, HEAD); ctx.fillStyle = col.accent; ctx.fillRect(0, HEAD - 4, W, 4);
+  const lg = $('#logoImg'); let tx = 32;
+  try{ if(lg && lg.naturalWidth){ const lh = 60, lw = lg.naturalWidth * lh / lg.naturalHeight; ctx.drawImage(lg, 28, 16, lw, lh); tx = 28 + lw + 18; } }catch(e){}
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.fillStyle = col.ink; ctx.font = `700 30px ${col.disp}`; ctx.fillText('LABO ARDUINO', tx, 50);
+  ctx.fillStyle = col.muted; ctx.font = `500 14px ${col.body}`; ctx.fillText('Institut Saint-Roch · Marche-en-Famenne', tx, 72);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = col.ink; ctx.font = `700 22px ${col.body}`; ctx.fillText(name ? name : (EDITION === 'prof' ? 'Mode prof' : 'Nom non indiqué'), W - 32, 46);
+  ctx.fillStyle = col.muted; ctx.font = `500 15px ${col.body}`; ctx.fillText(now.toLocaleDateString('fr-BE', {weekday:'long', day:'numeric', month:'long', year:'numeric'}) + ' · ' + now.toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'}), W - 32, 72);
+  ctx.textAlign = 'left';
+  // infos du défi
+  let y = HEAD + 22;
+  lay.forEach(l => { ctx.font = l.f; ctx.fillStyle = l.c; l.lines.forEach((ln, i) => ctx.fillText(ln, 40, y + l.lh * (i + 1) - l.lh * 0.25)); y += l.h; });
+  y += 10; ctx.fillStyle = col.line; ctx.fillRect(40, y, W - 80, 1); y += 8;
+  const title = t => { ctx.fillStyle = col.accent; ctx.font = `600 16px ${col.disp}`; ctx.fillText(t.toUpperCase(), 40, y + 26); y += titleH; };
+  // montage
+  if(circImg){ title('Montage'); ctx.fillStyle = '#fbfbf7'; ctx.fillRect(40, y, W - 80, ch); ctx.strokeStyle = col.line; ctx.lineWidth = 1; ctx.strokeRect(40.5, y + .5, W - 81, ch - 1);
+    ctx.drawImage(circImg, Math.round((W - cw) / 2), y, cw, ch); y += ch + 24; }
+  if(warnLines.length){ ctx.font = `500 15px ${col.body}`; ctx.fillStyle = '#8f5400'; warnLines.forEach(l => { ctx.fillText(l, 40, y + 15); y += 21; }); y += 16; }
+  // programme
+  title(progS.mode === 'code' ? 'Programme · code C' : 'Programme · blocs (code Arduino équivalent)');
+  ctx.fillStyle = col.codeBg; ctx.fillRect(40, y, W - 80, codeH); ctx.strokeStyle = col.line; ctx.strokeRect(40.5, y + .5, W - 81, codeH - 1);
+  let cy = y + 12;
+  wrapped.forEach(l => {
+    ctx.font = `500 13px ${col.mono}`; ctx.fillStyle = col.com; ctx.textAlign = 'right'; ctx.fillText(String(l.n), 40 + 38, cy + 15); ctx.textAlign = 'left';
+    let cx = 40 + 52; ctx.font = `500 14px ${col.mono}`;
+    for(const [s, role] of shotTokens(l.s)){ ctx.fillStyle = role === 'fg' ? col.ink : col[role]; ctx.fillText(s, cx, cy + 15); cx += ctx.measureText(s).width; }
+    cy += CLH;
+  });
+  y += codeH + 24;
+  if(errLines.length){ ctx.font = `600 16px ${col.body}`; ctx.fillStyle = col.danger; errLines.forEach(l => { ctx.fillText(l, 40, y + 16); y += 23; }); y += 12; }
+  if(serLines.length){
+    title('Moniteur série (dernières lignes)');
+    const sh = serLines.length * 19 + 24; ctx.fillStyle = col.serBg; ctx.fillRect(40, y, W - 80, sh);
+    ctx.font = `500 13.5px ${col.mono}`; ctx.fillStyle = col.serFg; serLines.forEach((l, i) => ctx.fillText(l.slice(0, 130), 54, y + 12 + 14 + i * 19));
+    y += sh + 24;
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = col.muted; ctx.font = `500 12.5px ${col.body}`;
+  ctx.fillText(`Labo Arduino v${APP_VERSION} · © Olivier Lesenfants · capture du ${now.toLocaleDateString('fr-BE')} à ${now.toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})}`, 40, H - 18);
+  const sl = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const pad = n => String(n).padStart(2, '0');
+  shotName = ['labo-arduino', sl(name), sl(D ? D.t : 'montage-libre'), `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}h${pad(now.getMinutes())}`].filter(Boolean).join('_') + '.png';
+  return new Promise(res => cvs.toBlob(b => res(b), 'image/png'));
+}
+async function openShot(){
+  const btn = $('#btnShot'); btn.disabled = true;
+  try{
+    const b = await makeShot(); if(!b) throw new Error('blob');
+    shotBlob = b; if(shotURL) URL.revokeObjectURL(shotURL); shotURL = URL.createObjectURL(b);
+    $('#shotImg').src = shotURL; $('#shotName').textContent = shotName;
+    let canShare = false; try{ canShare = !!(navigator.canShare && navigator.canShare({files: [new File([b], shotName, {type:'image/png'})]})); }catch(e){}
+    $('#shotShare').hidden = !canShare;
+    $('#mShot').hidden = false;
+  }catch(e){ console.error('capture', e); toast('La capture n’a pas pu être réalisée sur cet appareil.'); }
+  finally{ btn.disabled = false; }
+}
+$('#btnShot').onclick = openShot;
+$('#shotCopy').onclick = async () => {
+  try{
+    if(!navigator.clipboard || !window.ClipboardItem) throw new Error('no');
+    await navigator.clipboard.write([new ClipboardItem({'image/png': shotBlob})]);
+    toast('Image copiée. Colle-la avec Ctrl+V (ou appui long › Coller).');
+  }catch(e){ toast('Ce navigateur bloque la copie d’image : utilise « Enregistrer l’image ».'); }
+};
+$('#shotDl').onclick = async () => { const r = await saveFile(shotName, shotBlob); if(r === 'none') toast('Enregistrement impossible ici : utilise « Copier l’image ».'); };
+$('#shotShare').onclick = async () => {
+  try{ await navigator.share({files: [new File([shotBlob], shotName, {type:'image/png'})], title: 'Labo Arduino'}); }
+  catch(e){ if(e && e.name !== 'AbortError') toast('Le partage n’a pas fonctionné : utilise « Enregistrer l’image ».'); }
+};
+
 /* ---------------- divers ---------------- */
-$('#btnRun').onclick = () => { if(SIM.running) stop(); else { ensureAudio(); start(); } };
-$('#btnReset').onclick = () => start();
+function toggleRun(){ if(SIM.running){ stop(); return; } if(verifying || needName('téléverser ton programme')) return; ensureAudio(); start(); }
+$('#btnRun').onclick = toggleRun;
+$('#btnReset').onclick = () => { if(SIM.running) start(); };
+$('#btnUndo').onclick = undo;
+$('#btnClear').onclick = clearAll;
 $('#btnDefis').onclick = openDefis;
 $('#btnHelp').onclick = () => { $('#mHelp').hidden = false; };
 $('#btnSound').onclick = () => { soundOn = !soundOn; lsSet(SNDKEY, soundOn ? '1' : '0'); if(soundOn) ensureAudio(); else setTone(0); renderSound(); };
@@ -2681,13 +3015,16 @@ $('#serToggle').onclick = () => { const c = $('#console'); c.classList.toggle('c
 $('#zIn').onclick = () => board.zoom(1/1.25); $('#zOut').onclick = () => board.zoom(1.25); $('#zFit').onclick = fitBoard;
 function renderWColor(){ const wc = WIRE_COLORS[board.colorIdx]; $('#wColorI').style.background = wc.c || 'conic-gradient(#d62828 0 25%, #222 0 50%, #e8b400 0 75%, #2266d8 0)'; $('#wColor').title = 'Couleur des prochains fils : ' + (wc.c ? wc.id : 'automatique (rouge pour le 5 V, noir pour GND)'); }
 $('#wColor').onclick = () => { board.colorIdx = (board.colorIdx + 1) % WIRE_COLORS.length; renderWColor(); toast('Couleur des prochains fils : ' + (WIRE_COLORS[board.colorIdx].c ? WIRE_COLORS[board.colorIdx].id : 'automatique')); };
-$('#eleveNom').value = lsGet(NAMEKEY, '');
-$('#eleveNom').addEventListener('input', () => { lsSet(NAMEKEY, $('#eleveNom').value); if(!consMini) renderCons(); });
+$('#eleveNom').value = wsGet(NAMEKEY, '');
+$('#eleveNom').addEventListener('input', () => { wsSet(NAMEKEY, $('#eleveNom').value); if(!consMini) renderCons(); });
 function setView(v){ $('#main').dataset.view = v; $('#vCirc').setAttribute('aria-pressed', v === 'circuit'); $('#vProg').setAttribute('aria-pressed', v === 'prog'); if(v === 'circuit') requestAnimationFrame(() => { board.render(); }); if(v === 'prog' && progS.mode === 'code') requestAnimationFrame(() => renderGutter()); }
 $('#vCirc').onclick = () => setView('circuit'); $('#vProg').onclick = () => setView('prog');
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape'){ board.cancelWire(); document.querySelectorAll('.modal').forEach(m => m.hidden = true); return; }
   const t = e.target; if(t.closest && t.closest('input,textarea,select,.bedit,[contenteditable]')) return;
+  if(document.querySelector('.modal:not([hidden])')) return;
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')){ e.preventDefault(); undo(); return; }
+  if(e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey){ if(t.closest && t.closest('button,a,label')) return; e.preventDefault(); toggleRun(); return; }
   if(e.key === 'Delete' || e.key === 'Backspace'){ if(board.sel && !SIM.running){ e.preventDefault(); board.deleteSel(); } }
   if((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !SIM.running) board.rotateSel();
 });
@@ -2702,7 +3039,7 @@ $('#appVer').textContent = APP_VERSION; $('#logoBig').src = $('#logoImg').src;
 
 /* ---------------- démarrage ---------------- */
 renderPalette(); renderSound(); renderWColor();
-consInit(); loadWork(); applyWork(); setRunUI(); applyEdition();
+consInit(); loadWork(); applyWork(); setRunUI(); applyEdition(); resetHist();
 requestAnimationFrame(frame);
 window.__lab = {unlock, lock, loadSolution, corrVerify, get CORR(){ return CORR; }, set CORR(v){ CORR = v; }, SIM, TAPI, verify, goDefi, start, stop, get circ(){ return circ; }, get prog(){ return progS; }, setMode, bed, board, DEFIS, genCode, ensureSolved, applyWork, loadWork};
 
