@@ -2655,7 +2655,7 @@ DEFIS.push(
 /* =====================================================================
    APPLICATION — état, exécution, défis, sauvegarde, interface
    ===================================================================== */
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.4.3';
 const $ = s => document.querySelector(s);
 const STORE = 'labo-arduino-v1', NAMEKEY = 'labo-arduino-nom', SNDKEY = 'labo-arduino-son', WKEY = 'labo-arduino-largeur';
 const CODE_TEMPLATE = 'void setup() {\n  // s’exécute une seule fois, au démarrage\n\n}\n\nvoid loop() {\n  // se répète sans fin\n\n}\n';
@@ -3350,6 +3350,7 @@ $('#corrBody').addEventListener('click', e => {
 
 /* ---------------- aide : historique et suggestions ---------------- */
 const HIST = [
+  {v:'1.4.3', d:'19 novembre 2026', t:'Ouverture depuis la Plateforme technique', l:['Ouvert depuis la plateforme de l’école, le Labo affiche un bouton « ← Plateforme » pour y revenir.']},
   {v:'1.4.2', d:'16 octobre 2026', t:'Logo OL Élec', l:['Le logo OL Élec, dans ses couleurs d’origine, remplace celui de l’école dans l’en-tête, dans « À propos » et sur les captures.']},
   {v:'1.4.1', d:'15 octobre 2026', t:'Installation à côté du Banc de câblage', l:['Sur Windows (Chrome ou Edge), installer le Labo Arduino remplaçait l’application Banc de câblage déjà installée : les deux applications avaient la même identité. Le Labo Arduino a maintenant sa propre identité et s’installe à côté du Banc.']},
   {v:'1.4', d:'15 octobre 2026', t:'Afficheurs et modules', l:['Nouveaux composants : afficheur 7 segments, réseau de 8 résistances, écran LCD 16×2 I2C, capteur à ultrason HC-SR04 et lecteur RFID RC522 avec trois badges.', 'Huit nouveaux défis sur deux niveaux : compte à rebours, dé électronique, chronomètre LCD, télémètre, radar de recul, télémètre à écran, lecteur de badges et contrôle d’accès.', 'Code C : bibliothèques LiquidCrystal_I2C et MFRC522, pulseIn(), String(valeur, HEX) ; les divisions entre nombres entiers (millis() / 1000) donnent un entier, comme sur la vraie carte.', 'Blocs : nouvelles catégories « Afficheurs » et « Modules ».']},
@@ -3649,8 +3650,20 @@ window.__lab = {unlock, lock, loadSolution, corrVerify, get CORR(){ return CORR;
       '<li>iPhone, iPad : ouvre la page dans Safari, touche Partager, puis « Sur l’écran d’accueil ».</li>' +
       '<li>Une fois ouverte une première fois, l’application fonctionne aussi sans connexion.</li></ul>';
     const about = [...help.querySelectorAll('h3')].find(h => h.textContent.trim() === 'À propos');
-    help.insertBefore(sec, about || null);
+    if(about) about.parentNode.insertBefore(sec, about); else help.appendChild(sec);
   }
+})();
+</script>
+<script>
+/* ouverture depuis la Plateforme technique : bouton « ← Plateforme » pour y revenir */
+(function(){
+  var U = 'https://isr-maintenance.github.io/plateforme/';
+  try { if (/(^|[#&])plateforme(&|$)/.test(location.hash)) { sessionStorage.setItem('depuisPlateforme', '1'); history.replaceState(null, '', location.pathname + location.search); } if (sessionStorage.getItem('depuisPlateforme') !== '1') return; } catch (e) { return; }
+  var b = document.createElement('a');
+  b.href = U; b.textContent = '← Plateforme'; b.title = 'Revenir à la plateforme technique';
+  b.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#1d1d1f;color:#fff;font:600 14px/1 system-ui,sans-serif;padding:10px 14px;border-radius:999px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+  b.onclick = function(e){ if (window.opener && !window.opener.closed) { e.preventDefault(); try { window.opener.focus(); } catch (x) {} window.close(); setTimeout(function(){ location.href = U; }, 300); } };
+  document.body.appendChild(b);
 })();
 </script>
 </body>
