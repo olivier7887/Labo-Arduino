@@ -2655,7 +2655,7 @@ DEFIS.push(
 /* =====================================================================
    APPLICATION — état, exécution, défis, sauvegarde, interface
    ===================================================================== */
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.5';
 const $ = s => document.querySelector(s);
 const STORE = 'labo-arduino-v1', NAMEKEY = 'labo-arduino-nom', SNDKEY = 'labo-arduino-son', WKEY = 'labo-arduino-largeur';
 const CODE_TEMPLATE = 'void setup() {\n  // s’exécute une seule fois, au démarrage\n\n}\n\nvoid loop() {\n  // se répète sans fin\n\n}\n';
@@ -3189,6 +3189,7 @@ async function verify(opts){
     const msg = await D.test(TAPI);
     res = {cls:'ok', msg, when: new Date().toLocaleString('fr-BE', {day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})};
     if(!opts.sandbox) ST.done[D.id] = {when:new Date().toLocaleDateString('fr-BE'), tries:ST.tries[D.id]};
+    if(!opts.sandbox && typeof ptAnnonce === 'function') setTimeout(ptAnnonce, 0);   // Plateforme technique : défi réussi signalé
   } catch(e){
     res = {cls:'ko', msg: e.tf ? e.message : 'Erreur du testeur : ' + (e.message || e), when: new Date().toLocaleString('fr-BE', {day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})};
     const bw = [...SIM.warns.entries()].find(([k]) => k.startsWith('burn') || k.startsWith('pinI'));
@@ -3350,6 +3351,7 @@ $('#corrBody').addEventListener('click', e => {
 
 /* ---------------- aide : historique et suggestions ---------------- */
 const HIST = [
+  {v:'1.5', d:'23 novembre 2026', t:'Dans la Plateforme technique', l:['Le Labo peut s’ouvrir à l’intérieur de la plateforme de l’école, sans nouvel onglet.', 'Un chapitre de la plateforme peut ouvrir directement un défi précis ; quand l’élève le réussit, il est coché dans son cours.']},
   {v:'1.4.3', d:'19 novembre 2026', t:'Ouverture depuis la Plateforme technique', l:['Ouvert depuis la plateforme de l’école, le Labo affiche un bouton « ← Plateforme » pour y revenir.']},
   {v:'1.4.2', d:'16 octobre 2026', t:'Logo OL Élec', l:['Le logo OL Élec, dans ses couleurs d’origine, remplace celui de l’école dans l’en-tête, dans « À propos » et sur les captures.']},
   {v:'1.4.1', d:'15 octobre 2026', t:'Installation à côté du Banc de câblage', l:['Sur Windows (Chrome ou Edge), installer le Labo Arduino remplaçait l’application Banc de câblage déjà installée : les deux applications avaient la même identité. Le Labo Arduino a maintenant sa propre identité et s’installe à côté du Banc.']},
@@ -3655,10 +3657,40 @@ window.__lab = {unlock, lock, loadSolution, corrVerify, get CORR(){ return CORR;
 })();
 </script>
 <script>
-/* ouverture depuis la Plateforme technique : bouton « ← Plateforme » pour y revenir */
+/* Plateforme technique.
+   - Ouvert dans un nouvel onglet (#plateforme) : bouton « ← Plateforme » pour y revenir.
+   - Ouvert DANS la plateforme (#plateforme&embed, panneau) : pas de bouton (la plateforme a le sien),
+     #defi=id ouvre directement ce défi, et chaque défi réussi est signalé à la plateforme (une fois par session),
+     uniquement vers isr-maintenance.github.io (ou un test local). */
+var PT_EMBED = false, PT_ORIGIN = 'https://isr-maintenance.github.io';
+function ptAnnonce(){
+  if (!PT_EMBED) return;
+  var deja = {};
+  try { deja = JSON.parse(sessionStorage.getItem('ptAnnonces') || '{}') || {}; } catch (e) {}
+  var neuf = false;
+  Object.keys(ST.done || {}).forEach(function(id){
+    if (deja[id]) return;
+    var d = defiById(id); if (!d) return;
+    try { window.parent.postMessage({src:'arduino', type:'reussi', k: id + ':1', complet: true, titre: d.t}, PT_ORIGIN); deja[id] = 1; neuf = true; } catch (e) {}
+  });
+  if (neuf) try { sessionStorage.setItem('ptAnnonces', JSON.stringify(deja)); } catch (e) {}
+}
 (function(){
-  var U = 'https://isr-maintenance.github.io/plateforme/';
-  try { if (/(^|[#&])plateforme(&|$)/.test(location.hash)) { sessionStorage.setItem('depuisPlateforme', '1'); history.replaceState(null, '', location.pathname + location.search); } if (sessionStorage.getItem('depuisPlateforme') !== '1') return; } catch (e) { return; }
+  var U = 'https://isr-maintenance.github.io/plateforme/', h = location.hash;
+  // dans la plateforme : à l'ouverture (#…&embed) ou après un rechargement dans le panneau (mémorisé pour la session)
+  var mem = ''; try { mem = sessionStorage.getItem('ptEmbed') || ''; } catch (e) {}
+  if (window.parent !== window && (/(^|[#&])embed(&|$)/.test(h) || mem)) {
+    var o = '';
+    try { o = (location.ancestorOrigins && location.ancestorOrigins[0]) || ''; } catch (e) {}
+    if (!o) try { o = new URL(document.referrer).origin; } catch (e) {}
+    if (o === location.origin) o = mem;
+    if (o === PT_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) { PT_EMBED = true; PT_ORIGIN = o; try { sessionStorage.setItem('ptEmbed', o); } catch (e) {} }
+  }
+  var m = /[#&]defi=([\w.\-]+)/.exec(h);
+  if (/(^|[#&])(plateforme|defi=)/.test(h)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+  if (m && defiById(m[1])) { try { $('#mDefis').hidden = true; goDefi(m[1]); } catch (e) {} }
+  if (PT_EMBED) { ptAnnonce(); return; }
+  try { if (/(^|[#&])plateforme(&|$)/.test(h)) sessionStorage.setItem('depuisPlateforme', '1'); if (sessionStorage.getItem('depuisPlateforme') !== '1') return; } catch (e) { return; }
   var b = document.createElement('a');
   b.href = U; b.textContent = '← Plateforme'; b.title = 'Revenir à la plateforme technique';
   b.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#1d1d1f;color:#fff;font:600 14px/1 system-ui,sans-serif;padding:10px 14px;border-radius:999px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)';
