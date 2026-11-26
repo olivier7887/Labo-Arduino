@@ -306,6 +306,26 @@ table.corr .empty{color:var(--muted);text-align:center;padding:18px}
 .shotacts{display:flex;gap:8px;flex-wrap:wrap}
 .shotnote{margin:4px 0 0;color:var(--muted);font-size:13.5px}
 .who input.need{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 30%,transparent)}
+#btnCompte.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.cptb{display:grid;gap:12px}
+.cptb p,.elb p{margin:0}
+.cbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.cbox h3,.elb h3{margin:0}
+.cin{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:7px 9px;font-size:15px;font-family:inherit}
+.mut{color:var(--muted);font-size:13.5px}
+.cmsg{font-size:13.5px;color:var(--muted)}.cmsg:empty{display:none}.cmsg.ko,.elb .ko{color:var(--danger)}.elb .ok{color:var(--ok)}
+.cst{border-radius:8px;padding:8px 10px;background:var(--warn-soft);color:var(--fg);font-size:14px}.cst.ok{background:var(--ok-soft)}
+.elb{display:grid;gap:14px}.elb section{display:grid;gap:6px}
+.elb summary{cursor:pointer}
+.elscroll{overflow-x:auto}
+table.eltab{border-collapse:collapse;width:100%;font-size:14px}
+table.eltab th{text-align:left;font-weight:600;color:var(--muted);font-size:12.5px;border-bottom:1px solid var(--line);padding:5px 6px}
+table.eltab td{border-bottom:1px solid var(--line);padding:6px;vertical-align:middle}
+table.eltab tr.stu{cursor:pointer}table.eltab tr.stu:hover td{background:var(--accent-soft)}
+table.eltab tr.det td{background:var(--paper);color:var(--ink)}table.eltab tr.det ul{margin:4px 0;padding-left:20px}
+.tag{display:inline-block;margin-left:6px;font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:0 7px;color:var(--muted)}
+#elMsg:empty{display:none}#elMsg{font-weight:600}
+@media (max-width: 640px){ .hide-s{display:none} }
 .btn.armed{background:var(--danger);border-color:var(--danger);color:#fff}
 @media (max-width: 600px){ .hlist>li{grid-template-columns:1fr;gap:4px} .hv{grid-auto-flow:column;justify-content:start;align-items:baseline;gap:8px} .sugg .f2{grid-template-columns:1fr} }
 /* fenêtres */
@@ -378,6 +398,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
     </div>
     <label class="who" id="whoWrap">Élève<input id="eleveNom" placeholder="Nom et prénom" autocomplete="off"></label>
     <div class="tools">
+      <button class="btn" id="btnCompte" hidden>Se connecter</button>
       <button class="btn" id="btnPalette">+ Composants</button>
       <button class="btn" id="btnDefis">Défis</button>
       <button class="btn icon" id="btnUndo" title="Annuler (Ctrl+Z)">↶<span class="lab">Annuler</span></button>
@@ -482,6 +503,18 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
     <p class="shotnote">Fichier : <span id="shotName"></span></p>
   </div>
 </div>
+<div class="modal" id="mCpt" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="cptH" style="max-width:540px">
+    <div class="top"><h2 id="cptH">Se connecter</h2><button class="btn" data-close>Fermer</button></div>
+    <div id="cptBody" class="cptb"></div>
+  </div>
+</div>
+<div class="modal" id="mEl" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="elTitle" style="max-width:980px">
+    <div class="top"><h2 id="elTitle">Mes élèves</h2><div class="srow" style="margin:0"><button class="btn" id="elRef">Actualiser</button><button class="btn" data-close>Fermer</button></div></div>
+    <div id="elBody" class="elb"></div>
+  </div>
+</div>
 <div class="modal" id="mHelp" hidden>
   <div class="sheet" role="dialog" aria-labelledby="mHelpT">
     <div class="top"><h2 id="mHelpT">Aide</h2><button class="btn" data-close>Fermer</button></div>
@@ -509,6 +542,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line);bor
       <li>Une LED sans résistance grille, une entrée « en l’air » donne des valeurs au hasard, un court-circuit coupe l’alimentation : comme en vrai.</li>
       <li><b>Vérifier le défi</b> teste automatiquement ton montage et ton programme.</li>
       <li>Version élève : ton nom et ton prénom doivent être indiqués en haut pour téléverser ou vérifier un défi.</li>
+      <li class="cptOnly" hidden><b>Se connecter</b> (en haut) avec ton adresse de l’école : chaque vérification est envoyée à ton professeur, et tu retrouves tes défis réussis sur n’importe quel ordinateur. Sans compte, rien n’est envoyé.</li>
     </ul>
     <h3>4. Rendre son travail</h3>
     <ul>
@@ -2655,7 +2689,7 @@ DEFIS.push(
 /* =====================================================================
    APPLICATION — état, exécution, défis, sauvegarde, interface
    ===================================================================== */
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const $ = s => document.querySelector(s);
 const STORE = 'labo-arduino-v1', NAMEKEY = 'labo-arduino-nom', SNDKEY = 'labo-arduino-son', WKEY = 'labo-arduino-largeur';
 const CODE_TEMPLATE = 'void setup() {\n  // s’exécute une seule fois, au démarrage\n\n}\n\nvoid loop() {\n  // se répète sans fin\n\n}\n';
@@ -3198,6 +3232,7 @@ async function verify(opts){
     clearInterval(bar); $('#stage').style.pointerEvents = ''; stop(); verifying = false;
   }
   feedback = res; save(); renderCons();
+  if(!opts.sandbox && typeof accDefi === 'function') accDefi(D, res);   // compte : essai envoyé au professeur
   return res;
 }
 
@@ -3351,6 +3386,7 @@ $('#corrBody').addEventListener('click', e => {
 
 /* ---------------- aide : historique et suggestions ---------------- */
 const HIST = [
+  {v:'1.6', d:'26 novembre 2026', t:'Connexion et suivi par le professeur', l:['Bouton « Se connecter » : avec l’adresse de l’école (compte Google) ou un code reçu par e-mail, comme dans le Banc de câblage.', 'Chaque vérification d’un défi est envoyée au professeur (gardée sur l’appareil sans internet, puis envoyée).', 'Les défis réussis se retrouvent sur n’importe quel ordinateur.', 'Professeurs : page « Mes élèves » (défis réussis, essais, détail par élève), solutions ouvertes sans mot de passe.', 'Ouvert depuis la Plateforme technique, le Labo se connecte tout seul.']},
   {v:'1.5', d:'23 novembre 2026', t:'Dans la Plateforme technique', l:['Le Labo peut s’ouvrir à l’intérieur de la plateforme de l’école, sans nouvel onglet.', 'Un chapitre de la plateforme peut ouvrir directement un défi précis ; quand l’élève le réussit, il est coché dans son cours.']},
   {v:'1.4.3', d:'19 novembre 2026', t:'Ouverture depuis la Plateforme technique', l:['Ouvert depuis la plateforme de l’école, le Labo affiche un bouton « ← Plateforme » pour y revenir.']},
   {v:'1.4.2', d:'16 octobre 2026', t:'Logo OL Élec', l:['Le logo OL Élec, dans ses couleurs d’origine, remplace celui de l’école dans l’en-tête, dans « À propos » et sur les captures.']},
@@ -3654,6 +3690,333 @@ window.__lab = {unlock, lock, loadSolution, corrVerify, get CORR(){ return CORR;
     const about = [...help.querySelectorAll('h3')].find(h => h.textContent.trim() === 'À propos');
     if(about) about.parentNode.insertBefore(sec, about); else help.appendChild(sec);
   }
+})();
+</script>
+<script>
+/* ---------- compte : connexion (compte de l'école ou code par e-mail), suivi des défis par le professeur ----------
+   Même système que le Banc de câblage, avec son propre Google Sheet « Labo Arduino – données » (apps-script/Code.gs).
+   Sans compte, tout le Labo reste utilisable : seuls le suivi et les ✓ retrouvés sur un autre appareil manquent. */
+// adresses des deux déploiements du script (Connexion : elmarche.be ; Données : tout le monde) ; vides = pas de connexion
+var CPT = {loginUrl: '', apiUrl: ''};
+var CPTKEY = 'labo-arduino-compte', OUTKEY = 'labo-arduino-envois:';
+var ACC = null, ACCPROF = false, accT = null, accBusy = false, cptStep = null;
+function cptOn(){ return !!(CPT && CPT.apiUrl && CPT.loginUrl); }
+function accProf(){ return !!(ACC && (ACC.role === 'prof' || ACC.role === 'admin')); }
+function accOK(){ return !!(ACC && (ACC.statut === 'ok' || accProf())); }
+function accLoad(){ try{ const a = JSON.parse(localStorage.getItem(CPTKEY) || 'null'); return a && a.cle ? a : null; }catch(e){ return null; } }
+function accSave(){ try{ if(ACC) localStorage.setItem(CPTKEY, JSON.stringify(ACC)); else localStorage.removeItem(CPTKEY); }catch(e){} }
+async function accApi(a, q){
+  if(!cptOn()) throw new Error('Connexion non configurée.');
+  if(navigator.onLine === false) throw new Error('Pas de connexion internet.');
+  const ac = window.AbortController ? new AbortController() : null, t = ac && setTimeout(() => ac.abort(), 20000);
+  try{
+    const res = await fetch(CPT.apiUrl, {method:'POST', body: JSON.stringify(Object.assign({a, cle: ACC ? ACC.cle : undefined}, q || {})), signal: ac ? ac.signal : undefined, cache:'no-store', credentials:'omit'});
+    const j = await res.json();
+    if(!j.ok){ const e = new Error(j.erreur || 'Erreur du serveur.'); e.auth = j.auth; e.attente = j.attente; throw e; }
+    return j.data;
+  }catch(e){ if(e.name === 'AbortError') throw new Error('Le serveur ne répond pas. Réessaie.'); if(e instanceof TypeError) throw new Error('Serveur injoignable. Vérifie la connexion internet.'); throw e; }
+  finally{ if(t) clearTimeout(t); }
+}
+function accSet(cle){ ACC = {cle, statut:'attente', role:'eleve', complet:'', prenom:'', email:''}; accSave(); return accRefresh(true); }
+async function accRefresh(first){
+  if(!ACC) return;
+  try{
+    const m = await accApi('moi');
+    Object.assign(ACC, {email:m.email, role:m.role, statut:m.statut, classe:m.classe || '', nom:m.nom || '', prenom:m.prenom || '', complet:m.complet || '', classes:m.classes || [], cleProf:m.cleProf || ''});
+    accSave();
+    accFaits(m.faits || []);
+  }catch(e){
+    if(e.auth){ ACC = null; accSave(); accUI(); toast(e.message); return; }
+    if(first) throw e;
+  }
+  // compte professeur : les solutions s'ouvrent avec la clé du script (CLE_PROF), sans taper le mot de passe
+  if(accProf() && ACC.cleProf && EDITION !== 'prof' && !ACCPROF){
+    try{ await unlock(ACC.cleProf); ACCPROF = true; }
+    catch(e){ toast('La clé du mode prof réglée dans le script (CLE_PROF) n’ouvre pas les solutions : vérifie sa valeur.'); }
+  }
+  accUI();
+  accFlush();
+}
+// défis réussis enregistrés sur le serveur : l'élève retrouve ses ✓ sur un autre appareil
+function accFaits(l){
+  let ch = false;
+  l.forEach(f => { if(!f || !defiById(f.k) || ST.done[f.k]) return; ST.done[f.k] = {when: f.le ? new Date(f.le).toLocaleDateString('fr-BE') : '', tries: f.n || 0, srv: true}; ch = true; });
+  if(ch){ try{ wsSet(STORE, JSON.stringify(ST)); }catch(e){} renderCons(); if(!$('#mDefis').hidden) openDefis(); }
+}
+function accLogout(){
+  ACC = null; accSave();
+  if(ACCPROF){ ACCPROF = false; if(EDITION === 'prof') lock(); }
+  accUI(); toast('Tu es déconnecté sur cet appareil.');
+}
+function accUI(){
+  const b = $('#btnCompte'); if(!b) return;
+  b.hidden = !cptOn();
+  document.querySelectorAll('.cptOnly').forEach(x => x.hidden = !cptOn());
+  b.textContent = ACC ? '👤 ' + (ACC.prenom || ACC.complet || ACC.email || 'Mon compte') : 'Se connecter';
+  b.classList.toggle('on', !!ACC);
+  b.title = ACC ? 'Mon compte : ' + (ACC.email || '') : 'Se connecter pour que ton professeur suive tes défis';
+  const i = $('#eleveNom');
+  if(i){ if(ACC && ACC.complet){ i.value = ACC.complet; i.readOnly = true; i.title = 'Nom de ton compte'; } else if(i.readOnly){ i.readOnly = false; i.value = wsGet(NAMEKEY, ''); i.title = ''; } }
+  if(!$('#mCpt').hidden) cptRender();
+  renderCons();
+}
+
+/* vérification d'un défi → un essai envoyé au professeur (gardé sur l'appareil tant qu'il n'est pas reçu) */
+function accDefi(d, res){
+  if(!ACC || !d || EDITION === 'prof' || !res || res.cls === 'wait') return;
+  const txt = String(res.msg || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  accEvent({k: d.id, titre: d.t + ' · niveau ' + d.lv, lvl: d.lv, type: 'Défi', ok: res.cls === 'ok',
+    detail: (progS && progS.mode === 'code' ? 'Code C' : 'Blocs') + ' · ' + txt.slice(0, 260)});
+}
+function accOut(){ try{ return ACC ? JSON.parse(localStorage.getItem(OUTKEY + ACC.email) || '[]') : []; }catch(e){ return []; } }
+function accOutSet(l){ if(!ACC) return; try{ if(l.length) localStorage.setItem(OUTKEY + ACC.email, JSON.stringify(l)); else localStorage.removeItem(OUTKEY + ACC.email); }catch(e){} }
+function accEvent(e){
+  if(!ACC || !ACC.email) return;
+  const id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const l = accOut(); l.push(Object.assign({id, t: Date.now()}, e)); accOutSet(l.slice(-500));
+  clearTimeout(accT); accT = setTimeout(accFlush, 1500);
+}
+async function accFlush(){
+  if(!ACC || !accOK() || accBusy || navigator.onLine === false) return;
+  const l = accOut(); if(!l.length) return;
+  accBusy = true;
+  try{
+    const r = await accApi('envoyer', {ev: l.slice(0, 100)});
+    const got = new Set(r.recus || []);
+    accOutSet(accOut().filter(e => !got.has(e.id)));
+    if(l.length > 100) setTimeout(accFlush, 500);
+  }catch(e){ if(e.auth){ ACC = null; accSave(); accUI(); } }
+  finally{ accBusy = false; if(!$('#mCpt').hidden) cptRender(); }
+}
+
+/* fenêtre « Se connecter / Mon compte » */
+function openCpt(){ cptStep = cptStep && !ACC ? cptStep : null; document.querySelectorAll('.modal').forEach(m => m.hidden = true); cptRender(); $('#mCpt').hidden = false; }
+function cptRender(){
+  const B = $('#cptBody');
+  if(!ACC){
+    $('#cptH').textContent = 'Se connecter';
+    let ios = false; try{ ios = /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches); }catch(e){}
+    const emb = typeof PT_EMBED !== 'undefined' && PT_EMBED;   // dans la plateforme, la page Google s'ouvre dans un autre onglet et ne peut pas revenir ici
+    B.innerHTML = `<p style="margin:0">Connecte-toi pour que ton professeur suive tes défis. Tu retrouves aussi tes défis réussis sur n’importe quel ordinateur. Sans compte, le Labo marche tout aussi bien, mais rien n’est envoyé.</p>
+      ${emb ? '' : `<div class="cbox"><h3>Avec mon compte de l’école</h3><p class="mut">Pour les adresses …@elmarche.be. Une page Google s’ouvre, puis reviens ici.${ios ? ' Sur iPhone avec l’app installée, utilise plutôt le code par e-mail.' : ''}</p>
+        <div class="srow"><button class="btn primary" id="cptG">Se connecter avec Google</button></div></div>`}
+      <div class="cbox"><h3>Avec un code reçu par e-mail</h3>
+        ${cptStep && cptStep.email ? `<p style="margin:0">Code envoyé à <b>${escH(cptStep.email)}</b>. Regarde ta boîte mail (et les indésirables).</p>
+          <form class="srow" id="cptF2"><input id="cptCode" class="cin" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="width:9em;font-family:var(--font-mono);letter-spacing:.15em"><button class="btn primary" type="submit">Valider</button><button class="btn ghost" type="button" id="cptBack">Autre adresse</button></form>`
+        : `<form class="srow" id="cptF1"><input id="cptMail" class="cin" type="email" autocomplete="email" placeholder="prenom.nom.student@elmarche.be" style="flex:1;min-width:14em" value="${escH(cptStep && cptStep.prev || '')}"><button class="btn" type="submit">Recevoir un code</button></form>`}
+        <div class="cmsg" id="cptMsg"></div></div>`;
+    const g = $('#cptG');
+    if(g) g.onclick = () => { if(navigator.onLine === false){ cptMsg('La connexion demande internet.', true); return; } window.open(CPT.loginUrl, '_blank'); cptMsg('Termine la connexion dans la page Google qui vient de s’ouvrir.'); };
+    const f1 = $('#cptF1');
+    if(f1) f1.onsubmit = async e => {
+      e.preventDefault(); const em = $('#cptMail').value.trim().toLowerCase(); if(!em) return;
+      cptMsg('Envoi du code…');
+      try{
+        const r = await accApi('codeDemander', {email: em});
+        if(r.envoye){ cptStep = {email: em}; cptRender(); setTimeout(() => { try{ $('#cptCode').focus(); }catch(e){} }, 50); }
+        else cptMsg(r.message, true);
+      }catch(err){ cptMsg(err.message, true); }
+    };
+    const f2 = $('#cptF2');
+    if(f2){
+      $('#cptBack').onclick = () => { cptStep = {prev: cptStep.email}; cptRender(); };
+      f2.onsubmit = async e => {
+        e.preventDefault(); const code = $('#cptCode').value.replace(/\D/g, ''); if(code.length !== 6){ cptMsg('Le code a 6 chiffres.', true); return; }
+        cptMsg('Vérification…');
+        try{ const r = await accApi('codeVerifier', {email: cptStep.email, code}); cptStep = null; await accSet(r.cle); accWelcome(); }
+        catch(err){ cptMsg(err.message, true); }
+      };
+    }
+    return;
+  }
+  $('#cptH').textContent = 'Mon compte';
+  const out = accOut().length, cl = ACC.classes || [];
+  const nd = DEFIS.filter(d => ST.done[d.id]).length;
+  const st = accProf() ? `<div class="cst ok">${ACC.role === 'admin' ? 'Compte administrateur' : 'Compte professeur'}${ACC.cleProf ? ' : les solutions s’ouvrent avec le bouton « Mode prof », sans mot de passe.' : '. Les solutions s’ouvriront sans mot de passe quand la clé du mode prof sera réglée dans le script (CLE_PROF).'}</div>`
+    : ACC.statut === 'ok' ? `<div class="cst ok">Tes défis sont suivis par ton professeur${ACC.classe ? ' · classe ' + escH(ACC.classe) : ''}. ${nd} défi${nd > 1 ? 's' : ''} réussi${nd > 1 ? 's' : ''} sur ${DEFIS.length}.</div>`
+    : ACC.statut === 'refuse' ? '<div class="cst">Ton accès a été refusé : tes défis ne sont pas envoyés. Parles-en à ton professeur. Le Labo reste utilisable.</div>'
+    : `<div class="cst">Ta demande est envoyée : ton professeur doit l’accepter. Tes essais sont gardés sur cet appareil et partiront dès qu’il aura accepté.</div>`;
+  const clf = !accProf() && ACC.statut !== 'refuse' ? `<form class="srow" id="cptCl"><label style="display:flex;gap:6px;align-items:center;flex:1">Ma classe <input id="cptClasse" class="cin" list="cptClL" value="${escH(ACC.classe || '')}" placeholder="Choisis ou tape ta classe" maxlength="40" autocomplete="off" style="flex:1;min-width:9em"></label><datalist id="cptClL">${cl.map(c => `<option value="${escH(c)}">`).join('')}</datalist><button class="btn" type="submit">${ACC.classe ? 'Changer' : 'Envoyer'}</button></form>` : '';
+  B.innerHTML = `<p style="margin:0"><b>${escH(ACC.complet || ACC.email)}</b><br><span class="mut">${escH(ACC.email || '')}</span></p>${st}${clf}
+    ${!accProf() ? `<p class="mut">${out ? `${out} essai${out > 1 ? 's' : ''} en attente d’envoi${navigator.onLine === false ? ' (pas d’internet)' : ''}.` : 'Tous tes essais sont envoyés.'}</p>` : ''}
+    <div class="srow">${accProf() ? `<button class="btn primary" id="cptEl">${ACC.role === 'admin' ? 'Gestion des comptes' : 'Mes élèves'}</button>` : ''}<button class="btn" id="cptRef">Actualiser</button><button class="btn ghost" id="cptOut">Se déconnecter</button></div>
+    <div class="cmsg" id="cptMsg"></div>
+    <p class="mut" style="font-size:12.5px">Sur un ordinateur partagé, pense à te déconnecter à la fin.</p>`;
+  $('#cptRef').onclick = async () => { cptMsg('Actualisation…'); try{ await accRefresh(true); cptMsg(''); }catch(e){ cptMsg(e.message, true); } };
+  $('#cptOut').onclick = () => { $('#mCpt').hidden = true; accLogout(); };
+  const el = $('#cptEl'); if(el) el.onclick = () => { $('#mCpt').hidden = true; openEl(); };
+  const fc = $('#cptCl');
+  if(fc) fc.onsubmit = async e => { e.preventDefault(); const c = $('#cptClasse').value.replace(/\s+/g, ' ').trim(); if(!c) return; cptMsg('Envoi…'); try{ const m = await accApi('demande', {classe: c}); Object.assign(ACC, {classe: m.classe || c, classes: m.classes || ACC.classes}); accSave(); cptRender(); cptMsg('Classe enregistrée : ton professeur la corrigera si besoin.'); }catch(err){ cptMsg(err.message, true); } };
+}
+function cptMsg(t, ko){ const m = $('#cptMsg'); if(m){ m.textContent = t || ''; m.classList.toggle('ko', !!ko); } }
+function accWelcome(){
+  if(!ACC) return;
+  // un élève sans classe ou en attente voit sa fenêtre de compte (choisir sa classe)
+  $('#mCpt').hidden = accProf() || (ACC.statut === 'ok' && ACC.classe);
+  if(!$('#mCpt').hidden) cptRender();
+  toast(accProf() ? `Connecté : ${ACC.complet || ACC.email} (${ACC.role === 'admin' ? 'administrateur' : 'professeur'}).` : ACC.statut === 'ok' ? `Connecté : ${ACC.complet || ACC.email}. Tes défis sont suivis par ton professeur.` : `Connecté : ${ACC.complet || ACC.email}. Ton professeur doit encore accepter ta demande.`);
+}
+
+/* page « Gestion des comptes » (administrateur) et « Mes élèves » (professeurs) */
+var EL = null, ELF = {cl:'', q:'', open:''}, ELIMP = null;
+function openEl(){ $('#elTitle').textContent = ACC && ACC.role === 'admin' ? 'Gestion des comptes' : 'Mes élèves'; $('#mEl').hidden = false; elLoad(); }
+async function elLoad(act, q){
+  const B = $('#elBody');
+  if(!EL) B.innerHTML = '<p class="mut">Chargement…</p>';
+  if(act){ elMsg('⏳ Enregistrement en cours…'); B.style.pointerEvents = 'none'; B.style.opacity = '.6'; }
+  try{
+    EL = await accApi(act || 'profDonnees', q);
+    if(!act && ELF.cl === '' && EL.mesClasses && EL.mesClasses.length && !EL.admin) ELF.cl = 'mes';
+    elRender();
+    if(act === 'adminImporter'){ ELIMP = null; elRender(); elMsg('Liste importée : ces élèves sont autorisés.'); }
+    else if(act === 'profClasse') elMsg(q.classe ? `Classe enregistrée : ${q.classe}.` : 'Classe retirée.');
+    else if(act){ const M = {profRetirer:'Accès retiré : ' + (q.adresse || '') + '.', profAutoriser:'Accès autorisé : ' + (q.adresse || '') + '.', profRefuser:'Demande refusée.', adminSolutions:'Réglage des solutions enregistré.', adminClasse:'Classe enregistrée.', adminClasseRetirer:'Classe retirée.'}; elMsg(M[act] || '✓ Enregistré.'); }
+  }catch(e){ if(EL){ elRender(); elMsg(e.message, true); } else B.innerHTML = `<p class="ko">${escH(e.message)}</p>`; }
+  finally{ B.style.pointerEvents = ''; B.style.opacity = ''; }
+}
+function elMsg(t, ko){ const m = $('#elMsg'); if(m){ m.textContent = t; m.className = ko ? 'ko' : 'ok'; } }
+const elDate = ms => ms ? new Date(ms).toLocaleDateString('fr-BE', {day:'2-digit', month:'2-digit'}) + ' ' + new Date(ms).toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'}) : '';
+const elNth = n => n === 1 ? '1er' : n + 'e';
+/* lecture d'une liste collée ou d'un fichier CSV : une adresse par ligne, avec éventuellement nom, prénom et classe */
+function elParse(txt, classes){
+  const out = new Map(), cls = (classes || []).map(c => [c.toLowerCase(), c]);
+  String(txt || '').split(/\r?\n/).forEach(line => {
+    const mails = line.match(/[^\s@<>()",;:]+@[a-z0-9.-]+\.[a-z]{2,}/gi); if(!mails) return;
+    const rest = line.replace(/[^\s@<>()",;:]+@[a-z0-9.-]+\.[a-z]{2,}/gi, ' ').split(/[;,\t]+/).map(x => x.replace(/["<>]/g, '').trim()).filter(Boolean);
+    let classe = '';
+    const ci = rest.findIndex(x => cls.some(([l]) => l === x.toLowerCase())); if(ci >= 0){ classe = cls.find(([l]) => l === rest[ci].toLowerCase())[1]; rest.splice(ci, 1); }
+    const nom = mails.length === 1 ? rest.join(' ').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    mails.forEach(m => { const a = m.toLowerCase(); if(!out.has(a)) out.set(a, {adresse:a, nom, classe}); });
+  });
+  return [...out.values()];
+}
+function elRender(){
+  const D0 = EL, B = $('#elBody'), cls = D0.classes || [], adm = !!D0.admin;
+  const opt = (sel, none) => `<option value="">${none}</option>` + cls.map(c => `<option${c === sel ? ' selected' : ''}>${escH(c)}</option>`).join('');
+  const pend = D0.demandes.filter(d => !/refus/i.test(d.statut)), refused = D0.demandes.filter(d => /refus/i.test(d.statut));
+  const profs = new Map((D0.profs || []).map(p => [p.adresse, p]));
+  const ord = new Map(DEFIS.map((d, i) => [d.id, i]));
+  // comptes : adresses autorisées une par une, professeurs, et adresses vues dans les résultats (accès par domaine)
+  const stu = new Map();
+  D0.autorises.filter(a => a.adresse[0] !== '@').forEach(a => stu.set(a.adresse, {adresse:a.adresse, nom:a.nom, classe:a.classe, res:[]}));
+  (D0.profs || []).forEach(p => { if(!stu.has(p.adresse)) stu.set(p.adresse, {adresse:p.adresse, nom:p.nom, classe:'', res:[]}); });
+  D0.resultats.forEach(r => { if(!stu.has(r.adresse)) stu.set(r.adresse, {adresse:r.adresse, nom:r.nom, classe:r.classe, res:[], dom:true}); const s = stu.get(r.adresse); s.res.push(r); if(!s.nom) s.nom = r.nom; if(!s.classe) s.classe = r.classe; });
+  stu.forEach(s => { const p = profs.get(s.adresse); s.prof = !!p; s.admin = !!(p && p.admin); });
+  const mine = new Set(D0.mesClasses || []);
+  let list = [...stu.values()].filter(s => ELF.cl === 'mes' ? mine.has(s.classe) : ELF.cl === 'profs' ? s.prof : ELF.cl === 'sans' ? !s.classe && !s.prof : ELF.cl ? s.classe === ELF.cl : true);
+  const sans = [...stu.values()].filter(s => !s.classe && !s.prof).length;
+  if(!adm) list = list.filter(s => !s.prof);
+  const q = ELF.q.trim().toLowerCase(); if(q) list = list.filter(s => (s.nom + ' ' + s.adresse).toLowerCase().includes(q));
+  list.sort((a, b) => (b.admin - a.admin) || (b.prof - a.prof) || (a.classe || '~').localeCompare(b.classe || '~') || (a.nom || a.adresse).localeCompare(b.nom || b.adresse));
+  const doms = D0.autorises.filter(a => a.adresse[0] === '@');
+  let h = `<div id="elMsg"></div>`;
+  if(adm){
+    h += `<section><h3>Demandes d’accès (${pend.length})</h3>` + (pend.length ? `<div class="elscroll"><table class="eltab"><tr><th>Personne</th><th class="hide-s">Demandé le</th><th>Classe</th><th></th></tr>` +
+      pend.map(d => `<tr data-a="${escH(d.adresse)}"><td><b>${escH(d.nom || d.adresse)}</b><br><span class="mut">${escH(d.adresse)}</span>${d.verifiee ? '' : '<span class="tag" title="L’adresse n’a pas encore été confirmée (compte Google ou code par e-mail)">non vérifiée</span>'}${/retir/i.test(d.statut) ? '<span class="tag">accès retiré</span>' : ''}</td>
+        <td class="hide-s">${elDate(d.le)}</td><td><select class="elCl cin">${opt(d.classe, 'Classe…')}</select></td>
+        <td><div class="srow" style="margin:0"><button class="btn primary" data-ok="1">Autoriser</button><button class="btn ghost" data-no="1">Refuser</button></div></td></tr>`).join('') + `</table></div>`
+      : '<p class="mut">Aucune demande en attente.</p>') + (refused.length ? `<details style="margin-top:6px"><summary class="mut">Demandes refusées (${refused.length})</summary><table class="eltab">${refused.map(d => `<tr data-a="${escH(d.adresse)}"><td>${escH(d.nom || d.adresse)} <span class="mut">${escH(d.adresse)}</span></td><td><select class="elCl cin">${opt(d.classe, 'Classe…')}</select></td><td><button class="btn" data-ok="1">Autoriser</button></td></tr>`).join('')}</table></details>` : '') + `</section>`;
+    h += `<section><h3>Importer une liste d’élèves</h3><p class="mut">Colle les adresses (une par ligne, avec le nom et la classe si tu les as), ou choisis un fichier CSV exporté de Classroom ou d’Excel. Ces élèves sont autorisés d’office.</p>
+      <textarea id="elImpTxt" class="cin" rows="4" placeholder="prenom.nom.student@elmarche.be;Nom Prénom;3P Élec" style="width:100%;box-sizing:border-box;font-family:var(--font-mono)">${escH(ELIMP ? ELIMP.txt : '')}</textarea>
+      <div class="srow"><label class="btn" style="cursor:pointer">Fichier CSV…<input type="file" id="elImpFile" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden></label><label>Classe pour toute la liste <select id="elImpCl" class="cin">${opt(ELIMP ? ELIMP.cl : '', '(celle de chaque ligne)')}</select></label><button class="btn" id="elImpPrev">Vérifier la liste</button></div>
+      ${ELIMP && ELIMP.rows ? `<p><b>${ELIMP.rows.length}</b> adresse${ELIMP.rows.length > 1 ? 's' : ''} trouvée${ELIMP.rows.length > 1 ? 's' : ''}${ELIMP.rows.length ? ` : ${escH(ELIMP.rows.slice(0, 4).map(r => r.nom || r.adresse).join(', '))}${ELIMP.rows.length > 4 ? '…' : ''}` : ''}.</p>${ELIMP.rows.length ? '<button class="btn primary" id="elImpGo">Autoriser ces élèves</button>' : ''}` : ''}</section>`;
+    const cd = D0.classesDet || cls.map(c => ({classe:c, prof:''})), pr = D0.profs || [];
+    const popt = sel => `<option value="">—</option>` + pr.map(p => `<option value="${escH(p.adresse)}"${p.adresse === sel ? ' selected' : ''}>${escH(p.nom || p.adresse)}</option>`).join('');
+    const nb = c => [...stu.values()].filter(s => s.classe === c && !s.prof).length;
+    h += `<section><details${ELF.clOpen ? ' open' : ''} id="elClD"><summary><h3 style="display:inline">Classes (${cd.length})</h3></summary>
+      <p class="mut">Les élèves choisissent leur classe dans cette liste à leur première connexion. Le professeur d’une classe la retrouve dans « Mes classes ».</p>
+      <div class="elscroll"><table class="eltab"><tr><th>Classe</th><th>Professeur</th><th class="hide-s">Élèves</th><th></th></tr>${cd.map(c => `<tr data-c="${escH(c.classe)}"><td><input class="elCn cin" value="${escH(c.classe)}" style="width:100%;min-width:8em;box-sizing:border-box"></td><td><select class="elCp cin">${popt(c.prof)}</select></td><td class="hide-s">${nb(c.classe)}</td>
+        <td><div class="srow" style="margin:0"><button class="btn" data-cs="1">Enregistrer</button><button class="btn ghost" data-cdel="1">Supprimer</button></div></td></tr>`).join('')}</table></div>
+      <form class="srow" id="elClAdd"><input id="elClN" class="cin" placeholder="Nouvelle classe (ex. 5Q Élec)" style="flex:1;min-width:10em"><select id="elClP" class="cin">${popt(D0.moi)}</select><button class="btn primary" type="submit">Ajouter la classe</button></form></details></section>`;
+  }
+  h += `<section><h3>${adm ? 'Comptes' : 'Élèves'} (${list.length})</h3><div class="srow"><select id="elFcl" class="cin"><option value="">${adm ? 'Tous les comptes' : 'Toutes les classes'}</option>${adm ? `<option value="profs"${ELF.cl === 'profs' ? ' selected' : ''}>Professeurs</option>` : ''}${mine.size ? `<option value="mes"${ELF.cl === 'mes' ? ' selected' : ''}>Mes classes</option>` : ''}${sans || ELF.cl === 'sans' ? `<option value="sans"${ELF.cl === 'sans' ? ' selected' : ''}>Sans classe (${sans})</option>` : ''}${cls.map(c => `<option${c === ELF.cl ? ' selected' : ''}>${escH(c)}</option>`).join('')}</select><input id="elQ" class="cin" placeholder="Rechercher" value="${escH(ELF.q)}" style="flex:1;min-width:10em"></div>`;
+  h += list.length ? `<div class="elscroll"><table class="eltab"><tr><th>Compte</th><th>Classe</th>${adm ? '<th title="Coché : le compte est professeur et voit les solutions">Solutions</th>' : ''}<th>Réussis</th><th class="hide-s">Essais</th><th class="hide-s">Niveau atteint</th><th class="hide-s">Dernière activité</th></tr>` + list.map(s => {
+      const ok = s.res.filter(r => r.reussi), ess = s.res.reduce((a, r) => a + r.essais, 0), last = Math.max(0, ...s.res.map(r => r.dernier));
+      const niv = Math.max(0, ...ok.map(r => +r.lvl || 0));
+      const op = ELF.open === s.adresse, cols = adm ? 7 : 6;
+      let row = `<tr class="stu" data-s="${escH(s.adresse)}" data-a="${escH(s.adresse)}"><td><b>${escH(s.nom || s.adresse)}</b>${s.admin ? '<span class="tag">administrateur</span>' : s.prof ? '<span class="tag">professeur</span>' : ''}${s.dom ? '<span class="tag" title="Autorisé par son domaine">domaine</span>' : ''}<br><span class="mut">${escH(s.adresse)}</span></td><td>${s.prof ? '—' : `<select class="elStCl cin" aria-label="Classe"${s.classe ? '' : ' style="border-color:var(--warn)"'}>${opt(s.classe, 'Choisir…')}</select>`}</td>
+        ${adm ? `<td><input type="checkbox" class="elSol"${s.prof ? ' checked' : ''}${s.admin || s.dom ? ' disabled' : ''} aria-label="Voit les solutions" style="width:20px;height:20px"></td>` : ''}
+        <td>${ok.length} / ${DEFIS.length}</td><td class="hide-s">${ess}</td><td class="hide-s">${niv ? 'niveau ' + niv : '—'}</td><td class="hide-s">${elDate(last) || '—'}</td></tr>`;
+      if(op){
+        const rs = s.res.slice().sort((a, b) => (ord.has(a.k) ? ord.get(a.k) : 999) - (ord.has(b.k) ? ord.get(b.k) : 999));
+        row += `<tr class="det" data-a="${escH(s.adresse)}"><td colspan="${cols}">${rs.length ? `<ul>${rs.map(r => `<li><b>${escH(r.titre)}</b> : ` +
+            (r.reussi ? `<span class="ok">réussi</span> au ${elNth(r.n)} essai (${elDate(r.reussiLe)})${r.essais > r.n ? `, ${r.essais} essais en tout` : ''}` : `${r.essais} essai${r.essais > 1 ? 's' : ''}, pas encore réussi`) +
+            ` <span class="mut">· ${elDate(r.dernier)}</span></li>`).join('')}</ul>` : '<p class="mut">Aucun défi vérifié pour l’instant.</p>'}
+          ${adm && !s.dom && !s.admin ? `<div class="srow"><button class="btn ghost" data-del="1">Retirer l’accès</button></div>` : ''}</td></tr>`;
+      }
+      return row;
+    }).join('') + `</table></div>` : '<p class="mut">Aucun compte' + (ELF.cl || q ? ' pour ce filtre' : ' pour l’instant') + '.</p>';
+  h += `</section>`;
+  if(adm) h += `<section><h3>Ajouter un accès</h3><p class="mut">Une adresse (élève, collègue, prof d’une autre école) ou tout un domaine, par exemple <b>@ecole.be</b>. Coche « solutions » pour un professeur.</p>
+    <form class="srow" id="elAdd"><input id="elAdr" class="cin" placeholder="adresse@ecole.be ou @domaine.be" style="flex:2;min-width:14em"><input id="elNom" class="cin" placeholder="Nom Prénom (facultatif)" style="flex:1;min-width:10em"><select id="elAddCl" class="cin">${opt('', 'Classe…')}</select><label style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="elAddSol"> solutions</label><button class="btn primary" type="submit">Ajouter</button></form>
+    ${doms.length ? `<p class="mut">Domaines autorisés (tous leurs élèves sont suivis) :</p><table class="eltab">${doms.map(a => `<tr data-a="${escH(a.adresse)}"><td><b>${escH(a.adresse)}</b> ${a.classe ? '· ' + escH(a.classe) : ''}</td><td><button class="btn ghost" data-del="1">Retirer</button></td></tr>`).join('')}</table>` : ''}</section>`;
+  h += `<p class="mut">Tout est aussi dans le Google Sheet « Labo Arduino – données » (onglets Autorisés, Profs, Résultats et Journal).</p>`;
+  B.innerHTML = h;
+  $('#elFcl').onchange = e => { ELF.cl = e.target.value; elRender(); };
+  $('#elQ').oninput = e => { ELF.q = e.target.value; clearTimeout(elRender.t); elRender.t = setTimeout(() => { elRender(); const i = $('#elQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  B.querySelectorAll('tr.stu').forEach(tr => tr.onclick = e => { if(e.target.closest('input, select')) return; ELF.open = ELF.open === tr.dataset.s ? '' : tr.dataset.s; elRender(); });
+  B.querySelectorAll('.elStCl').forEach(c => c.onchange = () => elLoad('profClasse', {adresse: c.closest('tr').dataset.a, classe: c.value}));
+  if(!adm) return;
+  const row = b => b.closest('tr[data-a]'), clOf = tr => { const s = tr.querySelector('.elCl'); return s ? s.value : ''; };
+  const arm = (b, txt, go) => { if(b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = 'Confirmer ?'; b.classList.add('armed'); setTimeout(() => { if(b.isConnected){ b.dataset.armed = ''; b.textContent = txt; b.classList.remove('armed'); } }, 3000); return; } go(); };
+  B.querySelectorAll('.elSol').forEach(c => c.onchange = () => elLoad('adminSolutions', {adresse: row(c).dataset.a, on: c.checked}));
+  B.querySelectorAll('[data-ok]').forEach(b => b.onclick = () => { const tr = row(b); elLoad('profAutoriser', {adresse: tr.dataset.a, classe: clOf(tr)}); });
+  B.querySelectorAll('[data-no]').forEach(b => b.onclick = () => elLoad('profRefuser', {adresse: row(b).dataset.a}));
+  B.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const a = row(b).dataset.a; arm(b, a[0] === '@' ? 'Retirer' : 'Retirer l’accès', () => elLoad('profRetirer', {adresse: a})); });
+  $('#elAdd').onsubmit = async e => {
+    e.preventDefault(); const a = $('#elAdr').value.trim(); if(!a) return;
+    const sol = $('#elAddSol').checked;
+    await elLoad('profAutoriser', {adresse: a, nom: $('#elNom').value.trim(), classe: $('#elAddCl').value});
+    if(sol && a[0] !== '@') elLoad('adminSolutions', {adresse: a, on: true});
+  };
+  $('#elClD').ontoggle = e => { ELF.clOpen = e.target.open; };
+  $('#elClAdd').onsubmit = e => { e.preventDefault(); const n = $('#elClN').value.trim(); if(!n) return; ELF.clOpen = true; elLoad('adminClasse', {classe: n, prof: $('#elClP').value}); };
+  B.querySelectorAll('[data-cs]').forEach(b => b.onclick = () => { const tr = b.closest('tr[data-c]'); ELF.clOpen = true; elLoad('adminClasse', {ancien: tr.dataset.c, classe: tr.querySelector('.elCn').value.trim(), prof: tr.querySelector('.elCp').value}); });
+  B.querySelectorAll('[data-cdel]').forEach(b => b.onclick = () => arm(b, 'Supprimer', () => { ELF.clOpen = true; elLoad('adminClasseRetirer', {classe: b.closest('tr[data-c]').dataset.c}); }));
+  const prev = () => { ELIMP = {txt: $('#elImpTxt').value, cl: $('#elImpCl').value}; ELIMP.rows = elParse(ELIMP.txt, cls); elRender(); };
+  $('#elImpPrev').onclick = prev;
+  $('#elImpFile').onchange = e => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => { $('#elImpTxt').value = String(r.result || ''); prev(); }; r.readAsText(f); };
+  const go = $('#elImpGo'); if(go) go.onclick = () => elLoad('adminImporter', {lignes: ELIMP.rows.map(r => Object.assign({}, r, {classe: ELIMP.cl || r.classe})), classe: ELIMP.cl});
+}
+
+/* bouton « Mode prof » : un compte professeur bascule entre vue élève et solutions, sans mot de passe */
+(function(){
+  const b = $('#btnProf'), orig = b.onclick;
+  b.onclick = async e => {
+    if(EDITION !== 'prof' && accProf() && ACC.cleProf){
+      try{ await unlock(ACC.cleProf); ACCPROF = true; toast('Mode prof : solutions et correction disponibles.'); return; }catch(err){}
+    }
+    return orig.call(b, e);
+  };
+})();
+
+/* démarrage : clé reçue de la page Google (#cle=), ticket de la Plateforme technique (#pt=), ou compte déjà enregistré */
+(function(){
+  const h = location.hash, hm = /[#&]cle=([\w.\-]+)/.exec(h), hp = /[#&]pt=([\w.\-]+)/.exec(h);
+  // le script de la plateforme (plus bas) efface lui-même l'adresse quand elle contient #plateforme ou #defi=
+  if(hm || (hp && !/(^|[#&])(plateforme|defi=)/.test(h))){ try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
+  ACC = accLoad();
+  if(hp && cptOn()){
+    // ouvert depuis la Plateforme technique : son ticket remplace la connexion Google
+    accApi('sso', {ticket: hp[1]}).then(r => { const had = ACC && ACC.cle; ACC = {cle: r.cle, statut:'attente', role:'eleve', complet:'', prenom:'', email:''}; accSave(); return accRefresh(true).then(() => had); })
+      .catch(e => { toast('Connexion par la plateforme impossible : ' + e.message); if(accLoad()) { ACC = accLoad(); accRefresh(false); } });
+  } else if(hm && cptOn()){
+    ACC = {cle: hm[1], statut:'attente', role:'eleve', complet:'', prenom:'', email:''}; accSave();
+    accRefresh(true).then(accWelcome).catch(e => toast(e.message));
+  } else if(ACC && cptOn()) accRefresh(false);
+  accUI();
+  $('#btnCompte').onclick = openCpt;
+  $('#elRef').onclick = () => elLoad();
+  window.addEventListener('storage', e => {
+    if(e.key !== CPTKEY) return;
+    const a = accLoad(), had = ACC && ACC.cle;
+    ACC = a; accUI();
+    if(a && a.cle !== had){ $('#mCpt').hidden = true; if(a.email) accWelcome(); else accRefresh(false).then(accWelcome); }
+    if(!a && ACCPROF){ ACCPROF = false; if(EDITION === 'prof') lock(); }
+  });
+  window.addEventListener('online', () => { if(ACC) accRefresh(false); });
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') accFlush(); });
+  setInterval(() => { if(ACC && accOut().length) accFlush(); }, 60000);
 })();
 </script>
 <script>

@@ -1,0 +1,503 @@
+/**
+ * Labo Arduino — comptes élèves et suivi des défis
+ * Script du Google Sheet « Labo Arduino – données ». Créé par Lesenfants Olivier (OL Élec).
+ *
+ * Ce script a DEUX déploiements (même code) :
+ *   1. « Connexion » : Exécuter en tant que : Moi · Qui a accès : utilisateurs de elmarche.be
+ *      → doGet : Google indique qui est connecté, le script remet une clé signée à l'app.
+ *   2. « Données »   : Exécuter en tant que : Moi · Qui a accès : Tout le monde
+ *      → doPost : l'app envoie les résultats, demande un code par e-mail, et le prof gère les accès.
+ *
+ * Installation : coller ce code dans Extensions › Apps Script, exécuter « installer » une fois,
+ * puis créer les deux déploiements (Déployer › Nouveau déploiement › Application Web).
+ * Mise à jour : recoller le code, exécuter « installer », puis Gérer les déploiements › crayon ›
+ * Nouvelle version, pour CHACUN des deux déploiements (les adresses ne changent pas).
+ *
+ * Rôles : onglet Profs. La remarque « Propriétaire » (ou « Admin ») donne le rôle administrateur
+ * (gestion des accès, des classes et des professeurs dans l'app) ; les autres adresses sont professeurs ;
+ * toute autre adresse est un élève. L'installation autorise d'office tout le domaine @elmarche.be
+ * (onglet Autorisés) : retirer cette ligne pour valider chaque élève un par un.
+ * Mode prof : dans Paramètres du projet › Propriétés du script, ajouter CLE_PROF = le mot de passe
+ * du mode prof du Labo. Les profs connectés voient alors les solutions sans le taper.
+ */
+
+const DOMAINE = 'elmarche.be';
+const APP_URL = 'https://olivier7887.github.io/Labo-Arduino/';
+const DUREE_CLE_JOURS = 180;
+const CODE_MINUTES = 15;
+// Plateforme technique (isr-maintenance) : elle ouvre l'app avec un ticket de connexion qu'on fait vérifier ici
+const PLATEFORME_API = 'https://script.google.com/macros/s/AKfycbxPDMqJni1QwgLjrAV3RBmTDXeAX1MWN47cAis_I3V0VckDQEx4eq8oDxK-upmSAWX1Pw/exec';
+
+const ONGLETS = {
+  profs: { nom: 'Profs', entetes: ['Adresse', 'Nom', 'Remarque'] },
+  classes: { nom: 'Classes', entetes: ['Classe', 'Professeur (adresse)', 'Remarque'] },
+  autorises: { nom: 'Autorisés', entetes: ['Adresse ou @domaine', 'Nom', 'Classe', 'Autorisé par', 'Autorisé le', 'Remarque'] },
+  demandes: { nom: 'Demandes', entetes: ['Adresse', 'Nom', 'Classe', 'Demandé le', 'Identité vérifiée', 'Statut', 'Traité par', 'Traité le'] },
+  resultats: { nom: 'Résultats', entetes: ['Adresse', 'Nom', 'Classe', 'Défi (clé)', 'Titre', 'Niveau', 'Type', 'Essais', 'Réussi', 'Réussi au essai n°', 'Premier essai', 'Réussi le', 'Dernier essai'] },
+  journal: { nom: 'Journal', entetes: ['Date', 'Adresse', 'Défi (clé)', 'Titre', 'Niveau', 'Type', 'Résultat', 'Détail', 'id'] },
+};
+const CLASSES_INITIALES = ['3P Élec', '3QEM groupe 1', '3QEM groupe 2', '4Q Élec', '4Q Méca'];
+
+/* =========================================================
+   Installation (à exécuter une fois depuis l'éditeur)
+   ========================================================= */
+function installer() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  for (const k in ONGLETS) {
+    const o = ONGLETS[k];
+    let sh = ss.getSheetByName(o.nom);
+    if (!sh) sh = ss.insertSheet(o.nom);
+    sh.getRange(1, 1, 1, o.entetes.length).setValues([o.entetes]).setFontWeight('bold').setBackground('#e9edf1');
+    sh.setFrozenRows(1);
+  }
+  const moi = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const profs = onglet_('profs');
+  if (profs.getLastRow() < 2 && moi) profs.appendRow([moi, 'Lesenfants Olivier', 'Propriétaire']);
+  const cls = onglet_('classes');
+  if (cls.getLastRow() < 2) cls.getRange(2, 1, CLASSES_INITIALES.length, 3).setValues(CLASSES_INITIALES.map(c => [c, moi, '']));
+  try {
+    cls.getRange('B2:B200').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(profs.getRange('A2:A200'), true).setAllowInvalid(false).build());
+    onglet_('autorises').getRange('C2:C2000').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(cls.getRange('A2:A200'), true).setAllowInvalid(true).build());
+    [['autorises', 1, 300], ['demandes', 1, 300], ['resultats', 1, 280], ['resultats', 5, 300], ['journal', 2, 280], ['journal', 4, 300]].forEach(([k, c, w]) => onglet_(k).setColumnWidth(c, w));
+  } catch (e) { /* mise en forme facultative */ }
+  const aut = onglet_('autorises');
+  if (aut.getLastRow() < 2) aut.appendRow(['@' + DOMAINE, '', '', moi, new Date(), 'Tous les élèves de l’école (retirer cette ligne pour valider chaque élève)']);
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('SECRET')) props.setProperty('SECRET', Utilities.getUuid() + Utilities.getUuid());
+  const premier = ss.getSheets()[0];
+  if (/^(Feuille 1|Sheet1)$/.test(premier.getName()) && premier.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(premier);
+  Logger.log('Installation terminée.');
+}
+
+/* =========================================================
+   1. Connexion avec le compte de l'école (déploiement réservé à elmarche.be)
+   ========================================================= */
+function doGet() {
+  const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  let corps;
+  try {
+    if (!email) throw new Error("Google n'a pas transmis votre adresse. Ouvrez ce lien en étant connecté avec votre compte de l'école.");
+    const cle = signer_({ e: email, x: Date.now() + DUREE_CLE_JOURS * 864e5 });
+    const st = statut_(email);
+    if (st.statut !== 'ok') noterDemande_(email, '', true);
+    const n = nomDe_(email);
+    corps = `<h1>Bonjour ${html_(n.prenom)} !</h1>
+      <p>Vous êtes connecté avec <b>${html_(email)}</b>${st.role === 'admin' ? ' (administrateur)' : st.role === 'prof' ? ' (professeur)' : ''}.</p>
+      ${st.statut === 'ok' ? '' : st.statut === 'refuse' ? '<p>Votre accès a été refusé. Parlez-en à votre professeur.</p>' : '<p>Votre demande d’accès est envoyée : votre professeur doit vous autoriser. En attendant, la version d’essai reste disponible.</p>'}
+      <a class="btn" href="${APP_URL}#cle=${cle}" target="_top">Ouvrir le Labo Arduino</a>
+      <p class="petit">L'app garde votre connexion pendant ${DUREE_CLE_JOURS} jours, même sans internet.</p>`;
+  } catch (e) {
+    corps = `<h1>Connexion impossible</h1><p>${html_(e.message)}</p>${email ? `<p class="petit">Adresse transmise par Google : <b>${html_(email)}</b></p>` : ''}`;
+  }
+  return HtmlService.createHtmlOutput(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>body{font:16px/1.5 system-ui,sans-serif;background:#eef0ec;color:#1d2321;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}
+    main{background:#fff;border:1px solid #d6dad3;border-radius:14px;padding:28px;max-width:440px}
+    h1{margin:0 0 8px;font-size:1.6rem}.btn{display:inline-block;margin:14px 0;background:#00757e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600}
+    .petit{font-size:.85rem;color:#5c6660}</style><main>${corps}</main>`).setTitle('Labo Arduino – connexion');
+}
+
+/* =========================================================
+   2. Données (déploiement « Tout le monde »), appelé par l'app
+   ========================================================= */
+function doPost(e) {
+  let rep;
+  try {
+    const q = JSON.parse(e.postData.contents);
+    if (PUBLIQUES[q.a]) rep = { ok: true, data: PUBLIQUES[q.a](q) };
+    else {
+      const email = verifier_(q.cle);
+      const fn = ACTIONS[q.a];
+      if (!fn) throw new Error('Action inconnue.');
+      rep = { ok: true, data: fn(Object.assign({ email }, statut_(email)), q) };
+    }
+  } catch (err) {
+    rep = { ok: false, erreur: err.message, auth: !!err.auth, attente: !!err.attente };
+  }
+  return ContentService.createTextOutput(JSON.stringify(rep)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// sans clé : connexion par code reçu par e-mail
+const PUBLIQUES = {
+  codeDemander: (q) => codeDemander_(String(q.email || '')),
+  codeVerifier: (q) => codeVerifier_(String(q.email || ''), String(q.code || '')),
+  sso: (q) => sso_(String(q.ticket || '')),
+};
+/* Connexion depuis la Plateforme technique : ticket de 2 minutes vérifié par la plateforme,
+   puis même clé et mêmes règles que la connexion Google (l'accès d'un élève reste à autoriser). */
+/* À exécuter une fois depuis l'éditeur si Google n'a pas encore autorisé « Se connecter à un service externe » :
+   l'appel ci-dessous déclenche la demande d'autorisation, puis vérifie que la plateforme répond. */
+function autoriserPlateforme() {
+  const r = UrlFetchApp.fetch(PLATEFORME_API, { muteHttpExceptions: true, followRedirects: true });
+  Logger.log('Plateforme : ' + r.getResponseCode() + ' ' + r.getContentText().slice(0, 120));
+}
+function sso_(ticket) {
+  if (!ticket) throw erreurAuth_('Ticket de connexion manquant.');
+  const r = UrlFetchApp.fetch(PLATEFORME_API, { method: 'post', contentType: 'text/plain', payload: JSON.stringify({ a: 'ssoCheck', p: { ticket, app: 'arduino' } }), muteHttpExceptions: true, followRedirects: true });
+  let j; try { j = JSON.parse(r.getContentText()); } catch (e) { throw new Error('La plateforme ne répond pas : réessaie.'); }
+  if (!j.ok) throw erreurAuth_(j.msg || 'Connexion par la plateforme refusée.');
+  const email = adr_(j.mail);
+  if (statut_(email).statut !== 'ok') noterDemande_(email, '', true);
+  return { cle: signer_({ e: email, x: Date.now() + DUREE_CLE_JOURS * 864e5 }) };
+}
+// avec clé
+const ACTIONS = {
+  moi: (u, q) => { if (u.statut === 'attente' && !lignes_('demandes').some(r => adr_(r[0]) === u.email)) noterDemande_(u.email, '', true); return moi_(u, q); },
+  demande: (u, q) => (maClasse_(u, String(q.classe || '')), moi_(Object.assign({ email: u.email }, statut_(u.email)), {})),
+  envoyer: (u, q) => envoyer_(u, Array.isArray(q.ev) ? q.ev : []),
+  profDonnees: (u) => (prof_(u), profDonnees_(u)),
+  profAutoriser: (u, q) => (admin_(u), autoriser_(u, String(q.adresse || ''), String(q.classe || ''), String(q.nom || '')), profDonnees_(u)),
+  profRefuser: (u, q) => (admin_(u), refuser_(u, String(q.adresse || '')), profDonnees_(u)),
+  profRetirer: (u, q) => (admin_(u), retirer_(String(q.adresse || '')), profDonnees_(u)),
+  profClasse: (u, q) => (prof_(u), changerClasse_(u, String(q.adresse || ''), String(q.classe || '')), profDonnees_(u)),
+  adminProfs: (u) => (admin_(u), listeProfsAdmin_()),
+  adminProfAjouter: (u, q) => (admin_(u), profAjouter_(String(q.adresse || ''), String(q.nom || '')), listeProfsAdmin_()),
+  adminProfRetirer: (u, q) => (admin_(u), profRetirer_(u, String(q.adresse || '')), listeProfsAdmin_()),
+  adminClasse: (u, q) => (admin_(u), classeEnregistrer_(String(q.classe || ''), String(q.prof || ''), String(q.ancien || '')), profDonnees_(u)),
+  adminClasseRetirer: (u, q) => (admin_(u), classeRetirer_(String(q.classe || '')), profDonnees_(u)),
+  adminImporter: (u, q) => (admin_(u), importer_(u, Array.isArray(q.lignes) ? q.lignes : [], String(q.classe || '')), profDonnees_(u)),
+  adminSolutions: (u, q) => (admin_(u), solutions_(u, String(q.adresse || ''), !!q.on), profDonnees_(u)),
+};
+
+/* =========================================================
+   Clé signée (HMAC-SHA256)
+   ========================================================= */
+function secret_() { return PropertiesService.getScriptProperties().getProperty('SECRET'); }
+function b64_(s) { return Utilities.base64EncodeWebSafe(s).replace(/=+$/, ''); }
+function signer_(payload) {
+  const p = b64_(JSON.stringify(payload));
+  return p + '.' + b64_(Utilities.computeHmacSha256Signature(p, secret_()));
+}
+function erreurAuth_(msg) { const e = new Error(msg); e.auth = true; return e; }
+function verifier_(cle) {
+  const parts = String(cle || '').split('.');
+  if (parts.length !== 2) throw erreurAuth_('Connecte-toi d’abord.');
+  if (b64_(Utilities.computeHmacSha256Signature(parts[0], secret_())) !== parts[1]) throw erreurAuth_('Connexion non valide : reconnecte-toi.');
+  const pad = parts[0] + '==='.slice((parts[0].length + 3) % 4);
+  const p = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(pad)).getDataAsString());
+  if (!p.e || Date.now() > p.x) throw erreurAuth_('Ta connexion a expiré : reconnecte-toi.');
+  return String(p.e).toLowerCase();
+}
+
+/* =========================================================
+   Outils
+   ========================================================= */
+function onglet_(k) { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ONGLETS[k].nom); }
+function lignes_(k) {
+  const sh = onglet_(k), n = sh.getLastRow();
+  return n < 2 ? [] : sh.getRange(2, 1, n - 1, ONGLETS[k].entetes.length).getValues();
+}
+const adr_ = s => String(s || '').trim().toLowerCase();
+function cap_(s) { return String(s || '').split('-').map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : p).join('-'); }
+function html_(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function verrou_(fn) { const l = LockService.getScriptLock(); l.waitLock(20000); try { return fn(); } finally { l.releaseLock(); } }
+const dateMs_ = d => d instanceof Date ? d.getTime() : (d ? new Date(d).getTime() || 0 : 0);
+function emailValide_(e) { return /^[^\s@<>()",;:]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(e); }
+function nomDe_(email) {
+  const a = lignes_('autorises').find(r => adr_(r[0]) === email);
+  if (a && String(a[1]).trim()) { const p = String(a[1]).trim().split(/\s+/); return { nom: p[0], prenom: p.slice(1).join(' '), complet: String(a[1]).trim() }; }
+  return nomAdresse_(email);
+}
+/* « Nom Prénom » déduit de l'adresse (prenom.nom.student@… → « Nom Prénom »), sans lire le Google Sheet */
+function nomAdresse_(email) {
+  const parts = String(email || '').split('@')[0].split(/[._]/).filter(Boolean);
+  if (parts.length > 1 && /^students?\d*$/.test(parts[parts.length - 1])) parts.pop();
+  const prenom = cap_(parts[0] || ''), nom = parts.slice(1).map(cap_).join(' ');
+  return { prenom, nom, complet: (nom ? nom + ' ' : '') + prenom };
+}
+const nomOu_ = (nom, adresse) => String(nom || '').trim() || (String(adresse || '')[0] === '@' ? '' : nomAdresse_(adresse).complet);
+function profDe_(email) { return lignes_('profs').find(r => adr_(r[0]) === email); }
+function prof_(u) { if (u.role !== 'prof' && u.role !== 'admin') throw new Error('Réservé aux professeurs.'); }
+function admin_(u) { if (u.role !== 'admin') throw new Error('Réservé à l’administrateur (onglet Profs, remarque « Propriétaire »).'); }
+const estAdminLigne_ = r => /propri|admin/i.test(String(r[2] || ''));
+function listeClasses_() { return lignes_('classes').filter(r => String(r[0]).trim()).map(r => ({ classe: String(r[0]).trim(), prof: adr_(r[1]) })); }
+
+/* Statut d'une adresse : prof, autorisée (adresse ou @domaine), refusée ou en attente */
+function statut_(email) {
+  const p = profDe_(email);
+  if (p) return { role: estAdminLigne_(p) ? 'admin' : 'prof', statut: 'ok', classe: '' };
+  const dom = '@' + email.split('@')[1];
+  const aut = lignes_('autorises');
+  const a = aut.find(r => adr_(r[0]) === email) || aut.find(r => adr_(r[0]) === dom);
+  if (a) return { role: 'eleve', statut: 'ok', classe: String(a[2] || '').trim() };
+  const d = lignes_('demandes').find(r => adr_(r[0]) === email);
+  return { role: 'eleve', statut: d && /refus/i.test(String(d[5])) ? 'refuse' : 'attente', classe: d ? String(d[2] || '').trim() : '' };
+}
+function noterDemande_(email, classe, verifiee) {
+  return verrou_(() => {
+    const sh = onglet_('demandes'), rows = lignes_('demandes');
+    const i = rows.findIndex(r => adr_(r[0]) === email);
+    if (i < 0) { const n = nomDe_(email); sh.appendRow([email, n.complet, classe, new Date(), !!verifiee, 'En attente', '', '']); return; }
+    if (classe) sh.getRange(i + 2, 3).setValue(classe);
+    if (verifiee && rows[i][4] !== true) sh.getRange(i + 2, 5).setValue(true);
+  });
+}
+
+/* =========================================================
+   Connexion par code reçu par e-mail
+   ========================================================= */
+function codeDemander_(brut) {
+  const email = adr_(brut);
+  if (!emailValide_(email)) throw new Error('Adresse e-mail non valide.');
+  const cache = CacheService.getScriptCache();
+  const st = statut_(email), ecole = email.split('@')[1] === DOMAINE;
+  if (st.statut !== 'ok' && !ecole) {
+    // adresse extérieure pas encore autorisée : on transmet la demande au professeur (identité non vérifiée)
+    const g = Number(cache.get('demandes-ext') || 0);
+    if (g < 30) { cache.put('demandes-ext', String(g + 1), 3600); if (!lignes_('demandes').some(r => adr_(r[0]) === email)) noterDemande_(email, '', false); }
+    return { envoye: false, message: 'Cette adresse n’est pas encore autorisée. Ta demande est transmise au professeur : quand il l’aura acceptée, reviens demander ton code.' };
+  }
+  const nb = Number(cache.get('n:' + email) || 0);
+  if (nb >= 3) throw new Error('Trop de codes demandés pour cette adresse. Réessaie dans un quart d’heure.');
+  if (MailApp.getRemainingDailyQuota() < 1) throw new Error('Plus d’envoi possible aujourd’hui. Réessaie demain ou connecte-toi avec ton compte de l’école.');
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  cache.put('n:' + email, String(nb + 1), CODE_MINUTES * 60);
+  cache.put('c:' + email, JSON.stringify({ h: b64_(Utilities.computeHmacSha256Signature(code, secret_())), essais: 0 }), CODE_MINUTES * 60);
+  MailApp.sendEmail({
+    to: email, name: 'Labo Arduino', subject: 'Ton code de connexion : ' + code,
+    htmlBody: `<p>Bonjour,</p><p>Voici ton code pour te connecter au Labo Arduino :</p>
+      <p style="font-size:28px;font-weight:bold;letter-spacing:4px">${code}</p>
+      <p>Il est valable ${CODE_MINUTES} minutes. Si tu n’as rien demandé, ignore ce message.</p>`,
+  });
+  return { envoye: true };
+}
+function codeVerifier_(brut, code) {
+  const email = adr_(brut), cache = CacheService.getScriptCache();
+  const c = JSON.parse(cache.get('c:' + email) || 'null');
+  if (!c) throw new Error('Code expiré : demande un nouveau code.');
+  if (c.essais >= 5) { cache.remove('c:' + email); throw new Error('Trop d’essais : demande un nouveau code.'); }
+  if (b64_(Utilities.computeHmacSha256Signature(String(code).replace(/\D/g, ''), secret_())) !== c.h) {
+    c.essais++; cache.put('c:' + email, JSON.stringify(c), CODE_MINUTES * 60);
+    throw new Error('Code incorrect.');
+  }
+  cache.remove('c:' + email);
+  if (statut_(email).statut !== 'ok') noterDemande_(email, '', true);
+  return { cle: signer_({ e: email, x: Date.now() + DUREE_CLE_JOURS * 864e5 }) };
+}
+
+/* =========================================================
+   Élève
+   ========================================================= */
+function moi_(u) {
+  const n = nomDe_(u.email);
+  const res = { email: u.email, role: u.role, statut: u.statut, classe: u.classe, nom: n.nom, prenom: n.prenom, complet: n.complet, classes: listeClasses_().map(c => c.classe) };
+  if (u.role === 'prof' || u.role === 'admin') {
+    const p = profDe_(u.email); if (p && String(p[1]).trim()) res.complet = String(p[1]).trim();
+    const cp = PropertiesService.getScriptProperties().getProperty('CLE_PROF'); if (cp) res.cleProf = String(cp).trim().toUpperCase();
+  }
+  // défis déjà réussis : l'élève retrouve ses ✓ sur n'importe quel appareil
+  res.faits = lignes_('resultats').filter(r => adr_(r[0]) === u.email && r[8] === true).map(r => ({ k: String(r[3]), n: Number(r[9]) || 0, le: dateMs_(r[11]) }));
+  return res;
+}
+function envoyer_(u, evs) {
+  if (u.statut !== 'ok') { const e = new Error('Accès pas encore autorisé.'); e.attente = true; throw e; }
+  if (evs.length > 200) evs = evs.slice(0, 200);
+  return verrou_(() => {
+    const jr = onglet_('journal'), n = jr.getLastRow();
+    const vus = new Set(n < 2 ? [] : jr.getRange(2, 9, n - 1, 1).getValues().map(r => String(r[0])));
+    const neufs = evs.filter(e => e && e.id && !vus.has(String(e.id)) && String(e.k || '').length < 80);
+    const recus = evs.filter(e => e && e.id).map(e => String(e.id));
+    if (!neufs.length) return { recus };
+    const nm = nomDe_(u.email).complet;
+    jr.getRange(n + 1, 1, neufs.length, 9).setValues(neufs.map(e => [new Date(Number(e.t) || Date.now()), u.email, String(e.k), String(e.titre || '').slice(0, 120), String(e.lvl || ''), String(e.type || ''),
+      e.ok ? 'Réussi' : 'À corriger', String(e.detail || '').slice(0, 300), String(e.id)]));
+    const rs = onglet_('resultats'), rows = lignes_('resultats');
+    const idx = new Map(rows.map((r, i) => [adr_(r[0]) + '|' + r[3], i]));
+    const ajout = [];
+    neufs.sort((a, b) => (Number(a.t) || 0) - (Number(b.t) || 0)).forEach(e => {
+      const cle = u.email + '|' + e.k, t = new Date(Number(e.t) || Date.now());
+      let r, i = idx.get(cle);
+      if (i === undefined) { r = [u.email, nm, u.classe, String(e.k), String(e.titre || ''), String(e.lvl || ''), String(e.type || ''), 0, false, '', t, '', t]; rows.push(r); i = rows.length - 1; idx.set(cle, i); ajout.push(i); }
+      r = rows[i];
+      r[1] = nm; r[2] = u.classe || r[2]; r[4] = String(e.titre || r[4]); r[7] = (Number(r[7]) || 0) + 1; r[12] = t;
+      if (e.ok && r[8] !== true) { r[8] = true; r[9] = r[7]; r[11] = t; }
+      r.changed = true;
+    });
+    rows.forEach((r, i) => { if (r.changed && !ajout.includes(i)) rs.getRange(i + 2, 1, 1, 13).setValues([r.slice(0, 13)]); });
+    if (ajout.length) { const d = rs.getLastRow() + 1; rs.getRange(d, 1, ajout.length, 13).setValues(ajout.map(i => rows[i].slice(0, 13))); }
+    return { recus };
+  });
+}
+
+/* =========================================================
+   Professeur : accès et suivi
+   ========================================================= */
+function profDonnees_(u) {
+  const classes = listeClasses_();
+  const mesClasses = classes.filter(c => c.prof === u.email).map(c => c.classe);
+  const aut = lignes_('autorises').filter(r => String(r[0]).trim()).map(r => ({ adresse: adr_(r[0]), nom: nomOu_(r[1], adr_(r[0])), classe: String(r[2] || ''), par: adr_(r[3]), le: dateMs_(r[4]) }));
+  const dem = lignes_('demandes').filter(r => String(r[0]).trim() && !/accept/i.test(String(r[5])))
+    .map(r => ({ adresse: adr_(r[0]), nom: String(r[1] || ''), classe: String(r[2] || ''), le: dateMs_(r[3]), verifiee: r[4] === true, statut: String(r[5] || '') }));
+  const res = lignes_('resultats').filter(r => String(r[0]).trim()).map(r => ({ adresse: adr_(r[0]), nom: String(r[1] || ''), classe: String(r[2] || ''), k: String(r[3]), titre: String(r[4]), lvl: String(r[5]), type: String(r[6]),
+    essais: Number(r[7]) || 0, reussi: r[8] === true, n: Number(r[9]) || 0, premier: dateMs_(r[10]), reussiLe: dateMs_(r[11]), dernier: dateMs_(r[12]) }));
+  const out = { moi: u.email, admin: u.role === 'admin', classes: classes.map(c => c.classe), mesClasses, autorises: aut, demandes: dem, resultats: res };
+  out.profs = listeProfsAdmin_();
+  out.classesDet = classes;
+  if (u.role !== 'admin') { out.demandes = []; }
+  return out;
+}
+function autoriser_(u, brut, classe, nom) {
+  const a = adr_(brut);
+  if (!emailValide_(a) && !/^@[a-z0-9.-]+\.[a-z]{2,}$/.test(a)) throw new Error('Indique une adresse e-mail ou un domaine qui commence par @.');
+  verrou_(() => {
+    const sh = onglet_('autorises'), rows = lignes_('autorises'), i = rows.findIndex(r => adr_(r[0]) === a);
+    const dm = lignes_('demandes').find(r => adr_(r[0]) === a);
+    const nm = nom || (i >= 0 ? String(rows[i][1]) : '') || (dm && !/@/.test(String(dm[1])) ? String(dm[1]) : '') || nomOu_('', a);
+    const cl = classe || (i >= 0 ? String(rows[i][2]) : '') || (dm ? String(dm[2] || '') : '');
+    if (i < 0) sh.appendRow([a, nm, cl, u.email, new Date(), '']);
+    else sh.getRange(i + 2, 2, 1, 2).setValues([[nm, cl]]);
+    marquerDemande_(a, 'Acceptée', u.email);
+  });
+}
+function refuser_(u, brut) { const a = adr_(brut); verrou_(() => marquerDemande_(a, 'Refusée', u.email)); }
+function marquerDemande_(a, statut, par) {
+  const sh = onglet_('demandes'), rows = lignes_('demandes'), i = rows.findIndex(r => adr_(r[0]) === a);
+  if (i >= 0) sh.getRange(i + 2, 6, 1, 3).setValues([[statut, par, new Date()]]);
+}
+function retirer_(brut) {
+  const a = adr_(brut);
+  verrou_(() => {
+    const sh = onglet_('autorises'), rows = lignes_('autorises');
+    for (let i = rows.length - 1; i >= 0; i--) if (adr_(rows[i][0]) === a) sh.deleteRow(i + 2);
+    marquerDemande_(a, 'Accès retiré', '');
+    const ps = onglet_('profs'), pr = lignes_('profs');
+    for (let i = pr.length - 1; i >= 0; i--) if (adr_(pr[i][0]) === a && !estAdminLigne_(pr[i])) ps.deleteRow(i + 2);
+  });
+}
+// classe d'un élève : par l'administrateur ou par n'importe quel professeur (élèves sans classe, erreur de classe)
+function changerClasse_(u, brut, brutClasse) {
+  const a = adr_(brut);
+  if (!emailValide_(a)) throw new Error('Adresse e-mail non valide.');
+  if (profDe_(a)) throw new Error('Les professeurs n’ont pas de classe.');
+  const cl = String(brutClasse || '').trim();
+  const ex = cl ? listeClasses_().find(c => c.classe.toLowerCase() === cl.toLowerCase()) : null;
+  if (cl && !ex) throw new Error('Classe inconnue : ajoute-la d’abord dans la liste des classes.');
+  const classe = ex ? ex.classe : '';
+  verrou_(() => {
+    const sh = onglet_('autorises'), rows = lignes_('autorises'), i = rows.findIndex(r => adr_(r[0]) === a);
+    if (i >= 0) sh.getRange(i + 2, 3).setValue(classe);
+    else if (statut_(a).statut === 'ok') sh.appendRow([a, nomDe_(a).complet, classe, u.email, new Date(), 'classe attribuée']);   // élève autorisé par son domaine
+    const ds = onglet_('demandes'), dr = lignes_('demandes'), j = dr.findIndex(r => adr_(r[0]) === a);
+    if (j >= 0) ds.getRange(j + 2, 3).setValue(classe);
+    if (i < 0 && j < 0 && statut_(a).statut !== 'ok') throw new Error('Cette adresse n’a pas encore demandé d’accès.');
+    const rs = onglet_('resultats'); lignes_('resultats').forEach((r, k) => { if (adr_(r[0]) === a) rs.getRange(k + 2, 3).setValue(classe); });
+  });
+}
+
+/* =========================================================
+   Administrateur : professeurs
+   ========================================================= */
+function listeProfsAdmin_() {
+  return lignes_('profs').filter(r => String(r[0]).trim()).map(r => ({ adresse: adr_(r[0]), nom: nomOu_(r[1], adr_(r[0])), admin: estAdminLigne_(r) }));
+}
+function profAjouter_(brut, nom) {
+  const a = adr_(brut);
+  if (!emailValide_(a)) throw new Error('Adresse e-mail non valide.');
+  verrou_(() => {
+    const sh = onglet_('profs'), rows = lignes_('profs'), i = rows.findIndex(r => adr_(r[0]) === a);
+    if (i < 0) sh.appendRow([a, nom || nomDe_(a).complet, '']);
+    else if (nom) sh.getRange(i + 2, 2).setValue(nom);
+  });
+}
+function profRetirer_(u, brut) {
+  const a = adr_(brut);
+  if (a === u.email) throw new Error('Tu ne peux pas te retirer toi-même.');
+  verrou_(() => {
+    const sh = onglet_('profs'), rows = lignes_('profs');
+    for (let i = rows.length - 1; i >= 0; i--) if (adr_(rows[i][0]) === a) { if (estAdminLigne_(rows[i])) throw new Error('Un administrateur se retire dans le Google Sheet.'); sh.deleteRow(i + 2); }
+  });
+}
+
+/* =========================================================
+   Administrateur : import d'une liste d'élèves, case « voit les solutions »
+   ========================================================= */
+function importer_(u, lignes, classeDefaut) {
+  if (lignes.length > 1500) throw new Error('Liste trop longue (1500 lignes au plus).');
+  let n = 0;
+  verrou_(() => {
+    const sh = onglet_('autorises'), rows = lignes_('autorises'), idx = new Map(rows.map((r, i) => [adr_(r[0]), i]));
+    const profs = new Set(lignes_('profs').map(r => adr_(r[0])));
+    const ajout = [];
+    lignes.forEach(l => {
+      const a = adr_(l && l.adresse);
+      if (!emailValide_(a) || profs.has(a)) return;
+      const nom = String(l.nom || '').trim().slice(0, 80), cl = String(l.classe || classeDefaut || '').trim().slice(0, 40);
+      const i = idx.get(a);
+      if (i === undefined) { ajout.push([a, nom || nomDe_(a).complet, cl, u.email, new Date(), 'Import']); idx.set(a, -1); n++; }
+      else if (i >= 0) { const r = rows[i]; sh.getRange(i + 2, 2, 1, 2).setValues([[nom || r[1], cl || r[2]]]); n++; }
+    });
+    if (ajout.length) sh.getRange(sh.getLastRow() + 1, 1, ajout.length, 6).setValues(ajout);
+    // les demandes de ces adresses sont acceptées
+    const dsh = onglet_('demandes'), drows = lignes_('demandes'), set = new Set(lignes.map(l => adr_(l && l.adresse)));
+    drows.forEach((r, i) => { if (set.has(adr_(r[0])) && !/accept/i.test(String(r[5]))) dsh.getRange(i + 2, 6, 1, 3).setValues([['Acceptée', u.email, new Date()]]); });
+  });
+  return n;
+}
+function solutions_(u, brut, on) {
+  const a = adr_(brut);
+  if (!emailValide_(a)) throw new Error('Adresse e-mail non valide.');
+  if (a === u.email) throw new Error('Ton propre compte garde toujours les solutions.');
+  verrou_(() => {
+    const ps = onglet_('profs'), prow = lignes_('profs'), pi = prow.findIndex(r => adr_(r[0]) === a);
+    const as = onglet_('autorises'), arow = lignes_('autorises'), ai = arow.findIndex(r => adr_(r[0]) === a);
+    if (on) {
+      const nom = ai >= 0 ? String(arow[ai][1] || '') : nomDe_(a).complet;
+      if (pi < 0) ps.appendRow([a, nom, '']);
+      if (ai < 0) as.appendRow([a, nom, '', u.email, new Date(), 'Professeur']);
+    } else {
+      if (pi >= 0) { if (estAdminLigne_(prow[pi])) throw new Error('Un administrateur se retire dans le Google Sheet.'); ps.deleteRow(pi + 2); }
+      if (ai < 0) as.appendRow([a, pi >= 0 ? String(prow[pi][1] || '') : nomDe_(a).complet, '', u.email, new Date(), '']);
+    }
+    marquerDemande_(a, 'Acceptée', u.email);
+  });
+}
+
+/* =========================================================
+   Administrateur : classes
+   ========================================================= */
+function classeEnregistrer_(nom, prof, ancien) {
+  nom = String(nom || '').trim().slice(0, 40); prof = adr_(prof); ancien = String(ancien || '').trim();
+  if (!nom) throw new Error('Indique le nom de la classe.');
+  verrou_(() => {
+    const sh = onglet_('classes'), rows = lignes_('classes');
+    const i = rows.findIndex(r => String(r[0]).trim() === (ancien || nom));
+    if (ancien && ancien !== nom && rows.some(r => String(r[0]).trim() === nom)) throw new Error('Cette classe existe déjà.');
+    if (i < 0) sh.appendRow([nom, prof, '']);
+    else sh.getRange(i + 2, 1, 1, 2).setValues([[nom, prof || String(rows[i][1] || '')]]);
+    if (ancien && ancien !== nom) {
+      // la classe change de nom : les élèves et les demandes suivent
+      ['autorises', 'demandes'].forEach(k => { const o = onglet_(k); lignes_(k).forEach((r, j) => { if (String(r[2]).trim() === ancien) o.getRange(j + 2, 3).setValue(nom); }); });
+    }
+  });
+}
+function classeRetirer_(nom) {
+  nom = String(nom || '').trim();
+  verrou_(() => {
+    const sh = onglet_('classes'), rows = lignes_('classes');
+    for (let i = rows.length - 1; i >= 0; i--) if (String(rows[i][0]).trim() === nom) sh.deleteRow(i + 2);
+  });
+}
+
+/* =========================================================
+   Élève : choisir ou créer sa classe (l'administrateur corrige si besoin)
+   ========================================================= */
+function maClasse_(u, brut) {
+  const cl = String(brut || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!cl) throw new Error('Indique ta classe.');
+  verrou_(() => {
+    const cs = onglet_('classes'), crows = lignes_('classes');
+    const ex = crows.find(r => String(r[0]).trim().toLowerCase() === cl.toLowerCase());
+    const nom = ex ? String(ex[0]).trim() : cl;
+    if (!ex) {
+      if (crows.length >= 80) throw new Error('Trop de classes : demande à ton professeur de l’ajouter.');
+      cs.appendRow([nom, '', 'Ajoutée par ' + u.email]);
+    }
+    if (u.role !== 'eleve') return;
+    const as = onglet_('autorises'), arows = lignes_('autorises'), ai = arows.findIndex(r => adr_(r[0]) === u.email);
+    if (ai >= 0) as.getRange(ai + 2, 3).setValue(nom);
+    const ds = onglet_('demandes'), drows = lignes_('demandes'), di = drows.findIndex(r => adr_(r[0]) === u.email);
+    if (di >= 0) ds.getRange(di + 2, 3).setValue(nom);
+    if (ai < 0 && u.statut === 'ok') as.appendRow([u.email, nomDe_(u.email).complet, nom, '', new Date(), 'classe choisie par l’élève']);   // autorisé par son domaine
+    else if (ai < 0 && di < 0) ds.appendRow([u.email, nomDe_(u.email).complet, nom, new Date(), true, 'En attente', '', '']);
+    const rs = onglet_('resultats'); lignes_('resultats').forEach((r, k) => { if (adr_(r[0]) === u.email) rs.getRange(k + 2, 3).setValue(nom); });
+  });
+}
