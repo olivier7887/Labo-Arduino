@@ -3697,7 +3697,7 @@ window.__lab = {unlock, lock, loadSolution, corrVerify, get CORR(){ return CORR;
    Même système que le Banc de câblage, avec son propre Google Sheet « Labo Arduino – données » (apps-script/Code.gs).
    Sans compte, tout le Labo reste utilisable : seuls le suivi et les ✓ retrouvés sur un autre appareil manquent. */
 // adresses des deux déploiements du script (Connexion : elmarche.be ; Données : tout le monde) ; vides = pas de connexion
-var CPT = {loginUrl: '', apiUrl: ''};
+var CPT = {loginUrl: 'https://script.google.com/a/macros/elmarche.be/s/AKfycbxtRRJA4LbvwmSXEvMjuUGsiRM8UIvpM6rtDsCV15IAd9w0AfXbNFgOc87PBnz2xaPZfA/exec', apiUrl: 'https://script.google.com/macros/s/AKfycbzaOrKmj7-bws1_D2I72r52MChRJICcvzHMzsCyav3YTSnXiUvltH8yTkNohlVU7vpeig/exec'};
 var CPTKEY = 'labo-arduino-compte', OUTKEY = 'labo-arduino-envois:';
 var ACC = null, ACCPROF = false, accT = null, accBusy = false, cptStep = null;
 function cptOn(){ return !!(CPT && CPT.apiUrl && CPT.loginUrl); }

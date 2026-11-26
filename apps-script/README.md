@@ -20,6 +20,11 @@ Sans compte, le Labo reste entièrement utilisable : rien n'est verrouillé, mai
 
 7. Copier l'**URL de l'application Web** de chacun (elle se termine par `/exec`) et les mettre dans l'app : `var CPT = {loginUrl: A, apiUrl: B}` dans `index.html`.
 
+## Installation actuelle
+
+- Google Sheet « Labo Arduino – données » et projet Apps Script « Labo Arduino – comptes » (compte olivier.lesenfants@elmarche.be), propriété CLE_PROF réglée.
+- Les deux adresses (Connexion et Données) sont dans `index.html`.
+
 ## Onglets
 
 - **Profs** : adresses des professeurs (solutions et page « Mes élèves »). La remarque « Propriétaire » donne le rôle administrateur.
